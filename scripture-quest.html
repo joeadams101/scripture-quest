@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Scripture Quest">
+  <meta name="theme-color" content="#000000">
+  <title>Scripture Quest</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; padding: 0; overflow-x: hidden; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+    .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+    .animate-bounce { animation: bounce 1s ease-in-out infinite; }
+    .animate-spin { animation: spin 1s linear infinite; }
+    .animate-ping { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ============== DATA ==============
+    const CLASSES = [
+      { id: "prophet", name: "Prophet", icon: "🔥", char: "🧙‍♂️", bonus: "+25% XP OT" },
+      { id: "evangelist", name: "Evangelist", icon: "📖", char: "🧑‍🦱", bonus: "+25% XP Gospels" },
+      { id: "psalmist", name: "Psalmist", icon: "🎵", char: "👨‍🦰", bonus: "+25% XP Psalms" },
+      { id: "apostle", name: "Apostle", icon: "✉️", char: "🧔", bonus: "+25% XP Epistles" },
+    ];
+
+    const BIBLE = {
+      "gen-1": { book: "Genesis", ch: 1, title: "Creation", verses: ["In the beginning God created the heaven and the earth.", "And the earth was without form, and void.", "And God said, Let there be light: and there was light.", "And God saw the light, that it was good."], quiz: [{ q: "What did God create first?", opts: ["Man", "Heaven and earth", "Animals", "Light"], a: 1 }, { q: "What did God call the light?", opts: ["Sun", "Day", "Morning", "Dawn"], a: 1 }] },
+      "gen-2": { book: "Genesis", ch: 2, title: "Garden of Eden", verses: ["Thus the heavens and earth were finished.", "On the seventh day God rested.", "God blessed the seventh day.", "The LORD God formed man from dust."], quiz: [{ q: "What did God do on day seven?", opts: ["Created", "Rested", "Walked", "Spoke"], a: 1 }, { q: "Man was formed from?", opts: ["Water", "Dust", "Light", "Clay"], a: 1 }] },
+      "gen-3": { book: "Genesis", ch: 3, title: "The Fall", verses: ["The serpent was cunning.", "The woman saw the tree was good.", "She took the fruit and ate.", "Their eyes were opened."], quiz: [{ q: "What deceived Eve?", opts: ["Lion", "Serpent", "Eagle", "Wolf"], a: 1 }] },
+      "exo-1": { book: "Exodus", ch: 1, title: "Israel in Egypt", verses: ["Israel came to Egypt.", "They multiplied greatly.", "A new king arose.", "He afflicted them."], quiz: [{ q: "Where did Israel go?", opts: ["Canaan", "Egypt", "Babylon", "Rome"], a: 1 }] },
+      "exo-14": { book: "Exodus", ch: 14, title: "Red Sea", verses: ["Moses stretched his hand.", "The LORD divided the sea.", "Israel walked on dry ground.", "The waters were a wall."], quiz: [{ q: "Who parted the sea?", opts: ["Aaron", "Moses", "Joshua", "God"], a: 1 }] },
+    };
+
+    const REGIONS = [
+      { id: "creation", name: "Creation", icon: "🌍", chapters: ["gen-1", "gen-2", "gen-3"], lvl: 1 },
+      { id: "exodus", name: "Exodus", icon: "🔥", chapters: ["exo-1", "exo-14"], lvl: 5 },
+      { id: "kingdom", name: "Kingdom", icon: "👑", chapters: [], lvl: 15 },
+      { id: "prophets", name: "Prophets", icon: "📜", chapters: [], lvl: 25 },
+      { id: "gospels", name: "Gospels", icon: "✝️", chapters: [], lvl: 35 },
+    ];
+
+    const COMPANIONS = [
+      { id: "ruth", name: "Ruth", rarity: "Rare", emoji: "🌾", bonus: "+10% Gold", fx: { gold: 0.1 } },
+      { id: "samuel", name: "Samuel", rarity: "Rare", emoji: "📢", bonus: "+10% XP", fx: { xp: 0.1 } },
+      { id: "peter", name: "Peter", rarity: "Epic", emoji: "🪨", bonus: "+15% XP", fx: { xp: 0.15 } },
+      { id: "daniel", name: "Daniel", rarity: "Epic", emoji: "🦁", bonus: "+1 Life", fx: { lives: 1 } },
+      { id: "moses", name: "Moses", rarity: "Legendary", emoji: "🔥", bonus: "+30% XP", fx: { xp: 0.3, lives: 1 } },
+      { id: "david", name: "David", rarity: "Legendary", emoji: "👑", bonus: "+25% All", fx: { xp: 0.25, gold: 0.25 } },
+    ];
+
+    const GEAR = [
+      { id: "staff1", name: "Wooden Staff", rarity: "Common", icon: "🪵", slot: "weapon", fx: { xp: 0.05 }, desc: "+5% XP" },
+      { id: "shield1", name: "Bronze Shield", rarity: "Rare", icon: "🛡️", slot: "armor", fx: { lives: 1 }, desc: "+1 Life" },
+      { id: "staff2", name: "Staff of Moses", rarity: "Legendary", icon: "🔥", slot: "weapon", fx: { xp: 0.35, lives: 1 }, desc: "+35% XP +1 Life" },
+    ];
+
+    const TITLES = [
+      { id: "newcomer", name: "Newcomer", color: "color: #9ca3af" },
+      { id: "faithful", name: "Faithful One", color: "color: #60a5fa" },
+      { id: "devoted", name: "Devoted Disciple", color: "color: #a78bfa" },
+      { id: "prophet", name: "Prophet of Fire", color: "color: #fb923c" },
+      { id: "ascended", name: "Ascended Saint", color: "color: #fbbf24" },
+    ];
+
+    const FRAMES = [
+      { id: "none", name: "None", border: "3px solid rgba(255,255,255,0.3)" },
+      { id: "bronze", name: "Bronze", border: "4px solid #b45309" },
+      { id: "gold", name: "Gold", border: "4px solid #fbbf24" },
+      { id: "divine", name: "Divine", border: "4px solid #a78bfa" },
+    ];
+
+    const LEADERBOARD = [
+      { name: "DavidKing", lvl: 89, asc: 4, title: "Ascended Saint" },
+      { name: "MosesFollower", lvl: 76, asc: 3, title: "Prophet of Fire" },
+      { name: "FaithWarrior", lvl: 64, asc: 2, title: "Devoted Disciple" },
+      { name: "GraceSeeker", lvl: 58, asc: 2, title: "Devoted Disciple" },
+      { name: "TruthBearer", lvl: 51, asc: 1, title: "Faithful One" },
+    ];
+
+    const SHOP_ITEMS = [
+      { id: "energy", name: "Energy Refill", icon: "⚡", desc: "Restore 5 energy", price: 100, type: "energy" },
+      { id: "ticket1", name: "Summon Ticket", icon: "🎟️", desc: "1 summon ticket", price: 500, type: "ticket" },
+      { id: "ticket5", name: "5 Tickets", icon: "🎫", desc: "5 summon tickets", price: 2000, type: "ticket5" },
+    ];
+
+    const XP_TABLE = [0,100,250,500,800,1200,1700,2300,3000,4000,5000,6500,8000,10000,12500,15000,18000,22000,27000,33000];
+    
+    const RARITY = {
+      Common: { bg: "linear-gradient(to bottom right, #6b7280, #374151)", border: "#9ca3af", text: "#d1d5db" },
+      Rare: { bg: "linear-gradient(to bottom right, #3b82f6, #1d4ed8)", border: "#60a5fa", text: "#93c5fd" },
+      Epic: { bg: "linear-gradient(to bottom right, #8b5cf6, #6d28d9)", border: "#a78bfa", text: "#c4b5fd" },
+      Legendary: { bg: "linear-gradient(to bottom right, #fbbf24, #d97706)", border: "#fcd34d", text: "#fde68a" },
+    };
+
+    // ============== SAVE/LOAD ==============
+    const saveGame = (game) => {
+      try { localStorage.setItem('scripturequest', JSON.stringify(game)); } catch(e) {}
+    };
+    const loadGame = () => {
+      try { 
+        const saved = localStorage.getItem('scripturequest');
+        return saved ? JSON.parse(saved) : null;
+      } catch(e) { return null; }
+    };
+
+    // ============== APP ==============
+    function App() {
+      const [game, setGame] = useState(() => {
+        const saved = loadGame();
+        return saved || {
+          screen: "splash",
+          user: null,
+          done: [], stars: {},
+          inv: [], companions: [],
+          equipped: { weapon: null, armor: null, companion: null },
+          tickets: 3, energy: 5, maxEnergy: 5,
+          towerBest: 0, guildDmg: 0, ascension: 0,
+          title: "newcomer", frame: "none",
+          ownedTitles: ["newcomer"], ownedFrames: ["none"],
+        };
+      });
+
+      const [ui, setUi] = useState({
+        cls: null, name: "",
+        chapter: null, region: null,
+        quiz: { i: 0, score: 0, combo: 0, xp: 0, picked: null, lives: 3 },
+        summon: { pulling: false, result: null },
+        drop: null, lvlUp: null, tab: "gear",
+      });
+
+      // Auto-save
+      useEffect(() => { if (game.user) saveGame(game); }, [game]);
+
+      // Helpers
+      const lvl = (xp) => { for (let i = XP_TABLE.length - 1; i >= 0; i--) if (xp >= XP_TABLE[i]) return i + 1; return 1; };
+      const xpProg = (xp) => { const l = lvl(xp); return { cur: xp - (XP_TABLE[l-1]||0), need: (XP_TABLE[l]||99999) - (XP_TABLE[l-1]||0) }; };
+      const fx = () => {
+        let e = { xp: 0, gold: 0, lives: 0 };
+        [game.equipped.weapon, game.equipped.armor, game.equipped.companion].forEach(item => {
+          if (item?.fx) Object.entries(item.fx).forEach(([k,v]) => e[k] = (e[k]||0) + v);
+        });
+        e.xp += game.ascension * 0.05;
+        return e;
+      };
+      const baseLives = () => 3 + (fx().lives || 0);
+      const addXp = (base) => {
+        const total = base + Math.floor(base * fx().xp);
+        setGame(p => {
+          const oldL = lvl(p.user.xp), newXp = p.user.xp + total, newL = lvl(newXp);
+          if (newL > oldL) setTimeout(() => setUi(u => ({ ...u, lvlUp: { new: newL } })), 300);
+          return { ...p, user: { ...p.user, xp: newXp } };
+        });
+        return total;
+      };
+      const getRank = () => LEADERBOARD.filter(p => p.lvl > lvl(game.user?.xp || 0)).length + 848;
+      const getTitle = () => TITLES.find(t => t.id === game.title) || TITLES[0];
+      const getFrame = () => FRAMES.find(f => f.id === game.frame) || FRAMES[0];
+
+      // Styles
+      const styles = {
+        screen: { minHeight: '100vh', background: '#000', color: '#fff', position: 'relative', overflow: 'hidden' },
+        gradientBg: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, #1e1b4b, #1e293b 50%, #0f172a)' },
+        center: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' },
+        btn: { padding: '16px 32px', background: 'linear-gradient(to right, #f59e0b, #d97706)', borderRadius: '16px', fontWeight: 'bold', fontSize: '18px', border: 'none', color: '#000', cursor: 'pointer' },
+        btnSm: { padding: '12px 24px', background: 'linear-gradient(to right, #f59e0b, #d97706)', borderRadius: '12px', fontWeight: 'bold', border: 'none', color: '#000', cursor: 'pointer' },
+        card: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '16px' },
+        input: { width: '100%', padding: '16px', background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '16px', textAlign: 'center', fontSize: '20px', color: '#fff', outline: 'none' },
+      };
+
+      // ===== SPLASH =====
+      if (game.screen === "splash") {
+        return (
+          <div style={{ ...styles.screen, ...styles.center }}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'absolute', top: '25%', left: '50%', transform: 'translateX(-50%)', width: '300px', height: '300px', background: 'rgba(245,158,11,0.15)', borderRadius: '50%', filter: 'blur(80px)' }} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <div style={{ fontSize: '80px', marginBottom: '20px' }} className="animate-bounce">📖</div>
+              <h1 style={{ fontSize: '42px', fontWeight: 900, marginBottom: '8px', background: 'linear-gradient(to right, #fde68a, #fbbf24, #fde68a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Scripture Quest</h1>
+              <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '40px' }}>Journey Through The Word</p>
+              <button style={styles.btn} onClick={() => setGame(p => ({ ...p, screen: "name" }))}>Begin Journey</button>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== NAME =====
+      if (game.screen === "name") {
+        return (
+          <div style={{ ...styles.screen, ...styles.center }}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '320px' }}>
+              <div style={{ fontSize: '60px', marginBottom: '16px' }}>✨</div>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px' }}>Name Your Disciple</h2>
+              <input style={styles.input} value={ui.name} onChange={e => setUi(u => ({ ...u, name: e.target.value }))} placeholder="Enter name..." maxLength={12} />
+              <button style={{ ...styles.btn, width: '100%', marginTop: '24px', opacity: ui.name.trim() ? 1 : 0.3 }} onClick={() => ui.name.trim() && setGame(p => ({ ...p, screen: "class" }))}>Continue</button>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== CLASS =====
+      if (game.screen === "class") {
+        return (
+          <div style={{ ...styles.screen, padding: '20px' }}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10, maxWidth: '360px', margin: '0 auto' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', textAlign: 'center', marginBottom: '24px' }}>Choose Your Path</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                {CLASSES.map(c => (
+                  <button key={c.id} onClick={() => setUi(u => ({ ...u, cls: c }))}
+                    style={{ ...styles.card, display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', border: ui.cls?.id === c.id ? '2px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)', background: ui.cls?.id === c.id ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.05)' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>{c.char}</div>
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '18px' }}>{c.name} {c.icon}</div>
+                      <div style={{ color: '#fbbf24', fontSize: '14px' }}>{c.bonus}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <button style={{ ...styles.btn, width: '100%', opacity: ui.cls ? 1 : 0.3 }} onClick={() => {
+                if (!ui.cls) return;
+                const gear = GEAR[0];
+                const comp = COMPANIONS[0];
+                setGame(p => ({
+                  ...p, screen: "home",
+                  user: { name: ui.name, cls: ui.cls, xp: 150, gold: 100 },
+                  inv: [gear], companions: [comp],
+                  equipped: { weapon: gear, armor: null, companion: comp },
+                }));
+              }}>Begin</button>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== HOME =====
+      if (game.screen === "home") {
+        const u = game.user;
+        const level = lvl(u?.xp || 0);
+        const prog = xpProg(u?.xp || 0);
+        const effects = fx();
+        const rank = getRank();
+        const title = getTitle();
+        const frame = getFrame();
+        const next = ["gen-1", "gen-2", "gen-3", "exo-1", "exo-14"].find(c => !game.done.includes(c)) || "gen-1";
+        const nextCh = BIBLE[next];
+
+        return (
+          <div style={styles.screen}>
+            {/* Background */}
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '4px', height: '30%', background: 'linear-gradient(to bottom, rgba(251,191,36,0.4), transparent)' }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%', background: 'linear-gradient(to top, rgba(180,83,9,0.2), transparent)' }} />
+            <div style={{ position: 'absolute', bottom: '20%', left: '50%', transform: 'translateX(-50%)', width: '280px', height: '140px', background: 'rgba(245,158,11,0.1)', borderRadius: '50%', filter: 'blur(60px)' }} />
+
+            {/* Level Up Modal */}
+            {ui.lvlUp && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '80px', marginBottom: '16px' }}>⬆️</div>
+                  <h2 style={{ fontSize: '36px', fontWeight: 900, color: '#fbbf24', marginBottom: '8px' }}>LEVEL {ui.lvlUp.new}!</h2>
+                  <button style={{ ...styles.btnSm, marginTop: '24px' }} onClick={() => setUi(u => ({ ...u, lvlUp: null }))}>Continue</button>
+                </div>
+              </div>
+            )}
+
+            {/* Content */}
+            <div style={{ position: 'relative', zIndex: 10, padding: '12px 16px' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ background: 'rgba(249,115,22,0.3)', border: '1px solid rgba(249,115,22,0.5)', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🔥</span><span style={{ fontWeight: 'bold', color: '#fdba74' }}>12</span>
+                  </div>
+                  <div style={{ background: 'rgba(245,158,11,0.3)', border: '1px solid rgba(245,158,11,0.5)', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🪙</span><span style={{ fontWeight: 'bold', color: '#fcd34d' }}>{u?.gold || 0}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ background: 'rgba(59,130,246,0.3)', border: '1px solid rgba(59,130,246,0.5)', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>⚡</span><span style={{ fontWeight: 'bold', color: '#93c5fd' }}>{game.energy}/5</span>
+                  </div>
+                  <div style={{ background: 'rgba(236,72,153,0.3)', border: '1px solid rgba(236,72,153,0.5)', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🎟️</span><span style={{ fontWeight: 'bold', color: '#f9a8d4' }}>{game.tickets}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Character */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0' }}>
+                {game.ascension > 0 && <div style={{ color: '#fbbf24', fontSize: '18px', marginBottom: '8px' }}>{'⭐'.repeat(Math.min(game.ascension, 5))}</div>}
+                <div style={{ position: 'relative', marginBottom: '12px' }}>
+                  <div style={{ position: 'absolute', inset: '-20px', background: 'rgba(245,158,11,0.2)', borderRadius: '50%', filter: 'blur(30px)' }} />
+                  <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '50%', border: frame.border, background: 'linear-gradient(to bottom right, #1e293b, #0f172a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '56px' }}>{u?.cls?.char}</span>
+                    {game.equipped.weapon && <div style={{ position: 'absolute', right: '-8px', top: '8px', fontSize: '24px' }}>{game.equipped.weapon.icon}</div>}
+                    {game.equipped.companion && <div style={{ position: 'absolute', left: '-12px', bottom: '8px', fontSize: '28px' }}>{game.equipped.companion.emoji}</div>}
+                  </div>
+                  <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(to right, #f59e0b, #d97706)', color: '#000', fontWeight: 900, fontSize: '12px', padding: '4px 16px', borderRadius: '20px' }}>Lv.{level}</div>
+                </div>
+                <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '8px' }}>{u?.name}</h2>
+                <div style={{ fontSize: '14px', ...{ [title.color.split(':')[0]]: title.color.split(':')[1]?.trim() } }}>{title.name}</div>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', marginTop: '4px' }}>#{rank} Global</div>
+                
+                {/* XP Bar */}
+                <div style={{ width: '180px', marginTop: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+                    <span>XP</span><span>{prog.cur}/{prog.need}</span>
+                  </div>
+                  <div style={{ height: '8px', background: 'rgba(0,0,0,0.5)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ height: '100%', width: `${(prog.cur/prog.need)*100}%`, background: 'linear-gradient(to right, #f59e0b, #fbbf24)', borderRadius: '10px' }} />
+                  </div>
+                </div>
+
+                {/* Bonuses */}
+                {(effects.xp > 0 || effects.lives > 0) && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    {effects.xp > 0 && <span style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>+{Math.round(effects.xp*100)}% XP</span>}
+                    {effects.lives > 0 && <span style={{ background: 'rgba(239,68,68,0.2)', color: '#f87171', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>+{effects.lives} ❤️</span>}
+                  </div>
+                )}
+              </div>
+
+              {/* Main Quest */}
+              <button onClick={() => { setUi(u => ({ ...u, chapter: next })); setGame(p => ({ ...p, screen: "read" })); }}
+                style={{ width: '100%', background: 'linear-gradient(to bottom right, rgba(146,64,14,0.6), rgba(120,53,15,0.6))', border: '2px solid rgba(245,158,11,0.6)', borderRadius: '16px', padding: '16px', textAlign: 'left', cursor: 'pointer', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '18px' }}>📖</span>
+                  <span style={{ color: 'rgba(251,191,36,0.8)', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>CONTINUE JOURNEY</span>
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{nextCh?.book} {nextCh?.ch}</div>
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>{nextCh?.title}</div>
+              </button>
+
+              {/* Feature Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                {[
+                  { icon: "🗺️", name: "Map", scr: "campaign" },
+                  { icon: "🗼", name: "Tower", scr: "tower", lock: level < 10 },
+                  { icon: "⚔️", name: "Raid", scr: "raid" },
+                  { icon: "✨", name: "Summon", scr: "summon" },
+                  { icon: "🏪", name: "Shop", scr: "shop" },
+                ].map(f => (
+                  <button key={f.name} onClick={() => !f.lock && setGame(p => ({ ...p, screen: f.scr }))}
+                    style={{ ...styles.card, padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', opacity: f.lock ? 0.4 : 1 }}>
+                    <span style={{ fontSize: '20px' }}>{f.lock ? "🔒" : f.icon}</span>
+                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.6)' }}>{f.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                <button onClick={() => setGame(p => ({ ...p, screen: "inventory" }))} style={{ ...styles.card, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <span>🎒</span><span style={{ fontSize: '14px' }}>Inventory</span>
+                </button>
+                <button onClick={() => setGame(p => ({ ...p, screen: "hall" }))} style={{ ...styles.card, background: 'linear-gradient(to right, rgba(139,92,246,0.2), rgba(236,72,153,0.2))', border: '1px solid rgba(139,92,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <span>👑</span><span style={{ fontSize: '14px' }}>Hall of Faith</span>
+                </button>
+              </div>
+
+              {/* Mini Leaderboard */}
+              <div style={{ ...styles.card, background: 'linear-gradient(to bottom right, rgba(88,28,135,0.3), rgba(49,46,129,0.3))', border: '1px solid rgba(139,92,246,0.3)', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ color: '#c4b5fd', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>👑 HALL OF FAITH</span>
+                  <button onClick={() => setGame(p => ({ ...p, screen: "hall" }))} style={{ color: '#a78bfa', fontSize: '12px', background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
+                </div>
+                {LEADERBOARD.slice(0, 3).map((p, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', padding: '4px 0' }}>
+                    <span style={{ width: '20px' }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
+                    <span style={{ flex: 1 }}>{p.name}</span>
+                    <span style={{ color: '#fbbf24' }}>{'⭐'.repeat(Math.min(p.asc, 3))}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>Lv.{p.lvl}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', padding: '4px 0', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '4px' }}>
+                  <span style={{ width: '20px', color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>#{rank}</span>
+                  <span style={{ flex: 1, color: '#4ade80' }}>{u?.name} (You)</span>
+                  <span style={{ color: '#fbbf24' }}>{'⭐'.repeat(Math.min(game.ascension, 3))}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>Lv.{level}</span>
+                </div>
+              </div>
+
+              {/* Event */}
+              <button onClick={() => setGame(p => ({ ...p, screen: "event" }))}
+                style={{ width: '100%', background: 'linear-gradient(to right, rgba(234,88,12,0.4), rgba(220,38,38,0.4))', border: '1px solid rgba(249,115,22,0.5)', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <span style={{ fontSize: '28px' }}>🔥</span>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontWeight: 'bold' }}>The Exodus Event</div>
+                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>Limited Time • 6d 23h</div>
+                </div>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px' }}>→</span>
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== READ =====
+      if (game.screen === "read") {
+        const ch = BIBLE[ui.chapter];
+        if (!ch) return null;
+        return (
+          <div style={styles.screen}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <header style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <button onClick={() => setGame(p => ({ ...p, screen: "home" }))} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: '20px', cursor: 'pointer' }}>←</button>
+                <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 'bold' }}>{ch.book} {ch.ch}</div><div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>{ch.title}</div></div>
+                <div style={{ width: '32px' }} />
+              </header>
+              <main style={{ padding: '16px 20px' }}>
+                <div style={{ ...styles.card, background: 'rgba(120,53,15,0.1)', border: '1px solid rgba(245,158,11,0.1)', marginBottom: '24px' }}>
+                  {ch.verses.map((v, i) => (
+                    <p key={i} style={{ marginBottom: '12px', fontSize: '18px', lineHeight: 1.6 }}>
+                      <span style={{ display: 'inline-flex', width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(245,158,11,0.2)', color: '#fbbf24', fontSize: '12px', fontWeight: 'bold', alignItems: 'center', justifyContent: 'center', marginRight: '8px' }}>{i+1}</span>
+                      {v}
+                    </p>
+                  ))}
+                </div>
+                <button style={{ ...styles.btn, width: '100%' }} onClick={() => { setUi(u => ({ ...u, quiz: { i:0, score:0, combo:0, xp:0, picked:null, lives:baseLives() } })); setGame(p => ({ ...p, screen: "quiz" })); }}>
+                  Start Quiz
+                </button>
+              </main>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== QUIZ =====
+      if (game.screen === "quiz") {
+        const ch = BIBLE[ui.chapter];
+        const qs = ui.quiz;
+        const q = ch?.quiz[qs.i];
+        
+        // Done or dead
+        if (!q || qs.i >= ch.quiz.length || qs.lives <= 0) {
+          const won = qs.lives > 0;
+          const stars = won ? (qs.score === ch.quiz.length ? 3 : qs.score >= 1 ? 2 : 1) : 0;
+          const xpGained = addXp(qs.xp + 10);
+          const goldGained = Math.floor(20 * (1 + fx().gold));
+          
+          return (
+            <div style={{ ...styles.screen, ...styles.center }}>
+              <div style={styles.gradientBg} />
+              <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '320px' }}>
+                <div style={{ fontSize: '64px', marginBottom: '16px' }}>{won ? "🎉" : "💔"}</div>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>{won ? "Complete!" : "Defeated!"}</h2>
+                {won && <div style={{ marginBottom: '16px' }}>{[1,2,3].map(s => <span key={s} style={{ fontSize: '24px', color: s<=stars ? '#fbbf24' : 'rgba(255,255,255,0.2)' }}>⭐</span>)}</div>}
+                <div style={{ ...styles.card, marginBottom: '24px' }}>
+                  <div style={{ color: '#fbbf24', fontWeight: 'bold' }}>+{xpGained} XP</div>
+                  {won && <div style={{ color: '#fcd34d' }}>+{goldGained} 🪙</div>}
+                </div>
+                {!won && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    <button style={{ ...styles.btnSm, opacity: game.energy > 0 ? 1 : 0.3 }} onClick={() => { if (game.energy > 0) { setGame(p => ({ ...p, energy: p.energy - 1 })); setUi(u => ({ ...u, quiz: { i:0, score:0, combo:0, xp:0, picked:null, lives:baseLives() } })); } }}>🔄 Retry (1⚡)</button>
+                    <button style={{ ...styles.card, cursor: 'pointer' }} onClick={() => setGame(p => ({ ...p, screen: "read" }))}>📖 Study</button>
+                  </div>
+                )}
+                <button style={{ ...styles.card, width: '100%', cursor: 'pointer' }} onClick={() => {
+                  setGame(p => ({
+                    ...p, screen: "home",
+                    done: won ? [...new Set([...p.done, ui.chapter])] : p.done,
+                    stars: won ? { ...p.stars, [ui.chapter]: Math.max(p.stars[ui.chapter]||0, stars) } : p.stars,
+                    user: { ...p.user, gold: p.user.gold + (won ? goldGained : 0) }
+                  }));
+                }}>{won ? "Continue" : "Home"}</button>
+              </div>
+            </div>
+          );
+        }
+        
+        return (
+          <div style={{ ...styles.screen, padding: '20px' }}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10, maxWidth: '400px', margin: '0 auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div>{[...Array(qs.lives)].map((_, i) => <span key={i}>❤️</span>)}</div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {qs.combo > 0 && <span style={{ background: 'rgba(249,115,22,0.3)', padding: '4px 8px', borderRadius: '20px', color: '#fdba74', fontSize: '14px', fontWeight: 'bold' }}>{qs.combo}x🔥</span>}
+                  <span style={{ background: 'rgba(245,158,11,0.2)', padding: '4px 8px', borderRadius: '20px', color: '#fbbf24', fontSize: '14px', fontWeight: 'bold' }}>+{qs.xp}</span>
+                </div>
+              </div>
+              <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', marginBottom: '24px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${((qs.i+1)/ch.quiz.length)*100}%`, background: '#f59e0b', borderRadius: '10px' }} />
+              </div>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', marginBottom: '24px' }}>{q.q}</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {q.opts.map((opt, i) => {
+                  const picked = qs.picked !== null;
+                  const correct = i === q.a;
+                  const mine = i === qs.picked;
+                  let bg = 'rgba(255,255,255,0.05)';
+                  let border = 'rgba(255,255,255,0.1)';
+                  if (picked) {
+                    if (correct) { bg = 'rgba(34,197,94,0.2)'; border = '#4ade80'; }
+                    else if (mine) { bg = 'rgba(239,68,68,0.2)'; border = '#f87171'; }
+                    else { bg = 'rgba(255,255,255,0.02)'; }
+                  }
+                  return (
+                    <button key={i} disabled={picked} onClick={() => {
+                      const ok = i === q.a;
+                      const newCombo = ok ? qs.combo + 1 : 0;
+                      const gain = ok ? (newCombo >= 2 ? 40 : 25) : 0;
+                      setUi(u => ({ ...u, quiz: { ...qs, picked: i, combo: newCombo, score: qs.score + (ok?1:0), xp: qs.xp + gain, lives: ok ? qs.lives : qs.lives - 1 } }));
+                      setTimeout(() => setUi(u => ({ ...u, quiz: { ...u.quiz, picked: null, i: u.quiz.i + 1 } })), 800);
+                    }} style={{ padding: '16px', borderRadius: '12px', border: `2px solid ${border}`, background: bg, textAlign: 'left', cursor: picked ? 'default' : 'pointer', opacity: picked && !correct && !mine ? 0.3 : 1, color: '#fff' }}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== CAMPAIGN =====
+      if (game.screen === "campaign") {
+        const level = lvl(game.user?.xp || 0);
+        return (
+          <div style={styles.screen}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <header style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <button onClick={() => setGame(p => ({ ...p, screen: "home" }))} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>←</button>
+                <div style={{ flex: 1, fontWeight: 'bold', fontSize: '18px' }}>Campaign</div>
+                <div style={{ color: '#fbbf24' }}>⭐ {Object.values(game.stars).reduce((a,b)=>a+b,0)}</div>
+              </header>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {REGIONS.map(r => {
+                  const ok = level >= r.lvl;
+                  const stars = r.chapters.reduce((s,c) => s + (game.stars[c]||0), 0);
+                  return (
+                    <button key={r.id} disabled={!ok} onClick={() => ok && setUi(u => ({ ...u, region: r }))}
+                      style={{ ...styles.card, display: 'flex', alignItems: 'center', gap: '16px', cursor: ok ? 'pointer' : 'default', opacity: ok ? 1 : 0.4, border: ok ? '2px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.1)', background: ok ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.05)' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{ok ? r.icon : "🔒"}</div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontWeight: 'bold' }}>{r.name}</div>
+                        {ok && r.chapters.length > 0 && <div style={{ color: '#fbbf24', fontSize: '14px' }}>⭐ {stars}/{r.chapters.length * 3}</div>}
+                        {!ok && <div style={{ color: 'rgba(251,191,36,0.6)', fontSize: '14px' }}>Lv.{r.lvl}</div>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Region Modal */}
+            {ui.region && (
+              <div onClick={() => setUi(u => ({ ...u, region: null }))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: '#1e293b', borderRadius: '24px 24px 0 0', padding: '20px', width: '100%', maxWidth: '400px' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>{ui.region.name}</h3>
+                  {ui.region.chapters.length === 0 ? <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', padding: '32px 0' }}>Coming soon!</p> : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {ui.region.chapters.map(cId => {
+                        const ch = BIBLE[cId];
+                        const done = game.done.includes(cId);
+                        const stars = game.stars[cId] || 0;
+                        return (
+                          <button key={cId} onClick={() => { setUi(u => ({ ...u, chapter: cId, region: null })); setGame(p => ({ ...p, screen: "read" })); }}
+                            style={{ ...styles.card, display: 'flex', justifyContent: 'space-between', cursor: 'pointer', background: done ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)', border: done ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ textAlign: 'left' }}><div style={{ fontWeight: 'medium' }}>{ch.book} {ch.ch}</div><div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>{ch.title}</div></div>
+                            <div>{[1,2,3].map(s => <span key={s} style={{ color: s<=stars ? '#fbbf24' : 'rgba(255,255,255,0.2)' }}>⭐</span>)}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <button onClick={() => setUi(u => ({ ...u, region: null }))} style={{ ...styles.card, width: '100%', marginTop: '16px', cursor: 'pointer', textAlign: 'center' }}>Close</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // ===== INVENTORY =====
+      if (game.screen === "inventory") {
+        return (
+          <div style={styles.screen}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <header style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <button onClick={() => setGame(p => ({ ...p, screen: "home" }))} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>←</button>
+                <div style={{ fontWeight: 'bold', fontSize: '18px' }}>Inventory</div>
+              </header>
+              <div style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                  <button onClick={() => setUi(u => ({ ...u, tab: "gear" }))} style={{ flex: 1, padding: '12px', borderRadius: '12px', fontWeight: 'medium', border: 'none', cursor: 'pointer', background: ui.tab === "gear" ? '#f59e0b' : 'rgba(255,255,255,0.1)', color: ui.tab === "gear" ? '#000' : '#fff' }}>⚔️ Gear</button>
+                  <button onClick={() => setUi(u => ({ ...u, tab: "comp" }))} style={{ flex: 1, padding: '12px', borderRadius: '12px', fontWeight: 'medium', border: 'none', cursor: 'pointer', background: ui.tab === "comp" ? '#f59e0b' : 'rgba(255,255,255,0.1)', color: ui.tab === "comp" ? '#000' : '#fff' }}>👥 Companions</button>
+                </div>
+                
+                {ui.tab === "gear" && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                      {["weapon", "armor"].map(slot => {
+                        const item = game.equipped[slot];
+                        const r = item ? RARITY[item.rarity] : null;
+                        return (
+                          <div key={slot} style={{ aspectRatio: '1', borderRadius: '12px', border: item ? `2px solid ${r.border}` : '2px dashed rgba(255,255,255,0.2)', background: item ? r.bg : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            {item ? <><span style={{ fontSize: '32px' }}>{item.icon}</span><span style={{ fontSize: '10px' }}>{item.name}</span></> : <span style={{ fontSize: '24px', opacity: 0.3 }}>{slot === "weapon" ? "⚔️" : "🛡️"}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {game.inv.length === 0 ? <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', padding: '32px 0' }}>No gear yet</p> : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                        {game.inv.map((item, i) => {
+                          const r = RARITY[item.rarity];
+                          const eq = game.equipped[item.slot]?.id === item.id;
+                          return (
+                            <button key={i} onClick={() => setGame(p => ({ ...p, equipped: { ...p.equipped, [item.slot]: eq ? null : item } }))}
+                              style={{ aspectRatio: '1', borderRadius: '12px', background: r.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: eq ? '3px solid #4ade80' : 'none', cursor: 'pointer' }}>
+                              <span style={{ fontSize: '24px' }}>{item.icon}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {ui.tab === "comp" && (
+                  game.companions.length === 0 ? <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', padding: '32px 0' }}>No companions</p> : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {game.companions.map((c, i) => {
+                        const r = RARITY[c.rarity];
+                        const eq = game.equipped.companion?.id === c.id;
+                        return (
+                          <button key={i} onClick={() => setGame(p => ({ ...p, equipped: { ...p.equipped, companion: eq ? null : c } }))}
+                            style={{ ...styles.card, display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', background: eq ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.05)', border: eq ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: r.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{c.emoji}</div>
+                            <div style={{ flex: 1, textAlign: 'left' }}><div style={{ fontWeight: 'bold' }}>{c.name}</div><div style={{ color: '#4ade80', fontSize: '12px' }}>{c.bonus}</div></div>
+                            {eq && <span style={{ color: '#4ade80' }}>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== SUMMON =====
+      if (game.screen === "summon") {
+        if (ui.summon.result) {
+          const c = ui.summon.result;
+          const r = RARITY[c.rarity];
+          return (
+            <div style={{ ...styles.screen, ...styles.center }}>
+              <div style={styles.gradientBg} />
+              <div style={{ position: 'relative', zIndex: 10 }}>
+                <div style={{ width: '112px', height: '112px', borderRadius: '50%', background: r.bg, border: `4px solid ${r.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '64px', margin: '0 auto 16px' }}>{c.emoji}</div>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: r.text, marginBottom: '4px' }}>★ {c.rarity.toUpperCase()} ★</div>
+                <h3 style={{ fontSize: '24px', fontWeight: 'bold' }}>{c.name}</h3>
+                <p style={{ color: '#4ade80', marginBottom: '24px' }}>{c.bonus}</p>
+                <button style={styles.btnSm} onClick={() => { setGame(p => ({ ...p, companions: [...p.companions, c] })); setUi(u => ({ ...u, summon: { pulling: false, result: null } })); }}>Continue</button>
+              </div>
+            </div>
+          );
+        }
+        if (ui.summon.pulling) return <div style={{ ...styles.screen, ...styles.center }}><div style={styles.gradientBg} /><div style={{ width: '64px', height: '64px', borderRadius: '50%', border: '4px solid #8b5cf6', borderTopColor: 'transparent' }} className="animate-spin" /></div>;
+
+        return (
+          <div style={styles.screen}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <header style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <button onClick={() => setGame(p => ({ ...p, screen: "home" }))} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>←</button>
+                <div style={{ fontWeight: 'bold', fontSize: '18px' }}>Summon</div>
+                <div style={{ background: 'rgba(236,72,153,0.2)', padding: '6px 12px', borderRadius: '20px' }}>🎟️ {game.tickets}</div>
+              </header>
+              <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ position: 'relative', width: '128px', height: '128px', marginBottom: '32px' }}>
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(139,92,246,0.3)' }} className="animate-spin" />
+                  <div style={{ position: 'absolute', inset: '16px', borderRadius: '50%', background: 'rgba(139,92,246,0.2)', filter: 'blur(10px)' }} />
+                  <div style={{ position: 'absolute', inset: '24px', borderRadius: '50%', background: '#581c87', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>✨</div>
+                </div>
+                <button disabled={game.tickets < 1} onClick={() => {
+                  setUi(u => ({ ...u, summon: { pulling: true, result: null } }));
+                  setTimeout(() => {
+                    const roll = Math.random();
+                    const pool = roll < 0.03 ? COMPANIONS.filter(c => c.rarity === "Legendary") : roll < 0.15 ? COMPANIONS.filter(c => c.rarity === "Epic") : COMPANIONS.filter(c => c.rarity === "Rare");
+                    setGame(p => ({ ...p, tickets: p.tickets - 1 }));
+                    setUi(u => ({ ...u, summon: { pulling: false, result: pool[Math.floor(Math.random()*pool.length)] } }));
+                  }, 1500);
+                }} style={{ ...styles.btn, background: 'linear-gradient(to right, #ec4899, #8b5cf6)', opacity: game.tickets < 1 ? 0.5 : 1 }}>
+                  Summon ×1
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== SHOP =====
+      if (game.screen === "shop") {
+        return (
+          <div style={styles.screen}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <header style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <button onClick={() => setGame(p => ({ ...p, screen: "home" }))} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>←</button>
+                <div style={{ fontWeight: 'bold', fontSize: '18px' }}>Shop</div>
+                <div style={{ background: 'rgba(245,158,11,0.2)', padding: '6px 12px', borderRadius: '20px', color: '#fbbf24' }}>🪙 {game.user?.gold || 0}</div>
+              </header>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {SHOP_ITEMS.map(item => {
+                  const canAfford = (game.user?.gold || 0) >= item.price;
+                  return (
+                    <button key={item.id} disabled={!canAfford}
+                      onClick={() => {
+                        if (!canAfford) return;
+                        let update = {};
+                        if (item.type === "energy") update.energy = 5;
+                        if (item.type === "ticket") update.tickets = game.tickets + 1;
+                        if (item.type === "ticket5") update.tickets = game.tickets + 5;
+                        setGame(p => ({ ...p, ...update, user: { ...p.user, gold: p.user.gold - item.price } }));
+                      }}
+                      style={{ ...styles.card, display: 'flex', alignItems: 'center', gap: '16px', cursor: canAfford ? 'pointer' : 'default', opacity: canAfford ? 1 : 0.5 }}>
+                      <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: 'linear-gradient(to bottom right, rgba(245,158,11,0.2), rgba(249,115,22,0.2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>{item.icon}</div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontWeight: 'bold' }}>{item.name}</div>
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>{item.desc}</div>
+                      </div>
+                      <div style={{ color: '#fbbf24', fontWeight: 'bold' }}>🪙 {item.price}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== HALL =====
+      if (game.screen === "hall") {
+        const level = lvl(game.user?.xp || 0);
+        const rank = getRank();
+        return (
+          <div style={styles.screen}>
+            <div style={{ ...styles.gradientBg, background: 'linear-gradient(to bottom, #3b0764, #1e1b4b, #000)' }} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <header style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button onClick={() => setGame(p => ({ ...p, screen: "home" }))} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>←</button>
+                <div><h1 style={{ fontSize: '20px', fontWeight: 'bold' }}>Hall of Faith</h1><p style={{ color: '#c4b5fd', fontSize: '12px' }}>The greatest disciples</p></div>
+              </header>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {LEADERBOARD.map((p, i) => (
+                  <div key={i} style={{ ...styles.card, display: 'flex', alignItems: 'center', gap: '12px', background: i < 3 ? 'linear-gradient(to right, rgba(245,158,11,0.2), rgba(249,115,22,0.2))' : 'rgba(255,255,255,0.05)', border: i < 3 ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ width: '32px', textAlign: 'center' }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : <span style={{ color: 'rgba(255,255,255,0.4)' }}>#{i+1}</span>}</div>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(to bottom right, #8b5cf6, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', border: '2px solid rgba(251,191,36,0.5)' }}>🧙‍♂️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>{p.name} <span style={{ color: '#fbbf24', fontSize: '14px' }}>{'⭐'.repeat(Math.min(p.asc, 3))}</span></div>
+                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{p.title}</div>
+                    </div>
+                    <div style={{ fontWeight: 'bold', color: '#fbbf24' }}>Lv.{p.lvl}</div>
+                  </div>
+                ))}
+                {/* You */}
+                <div style={{ ...styles.card, display: 'flex', alignItems: 'center', gap: '12px', background: 'linear-gradient(to right, rgba(34,197,94,0.2), rgba(16,185,129,0.2))', border: '2px solid rgba(34,197,94,0.5)' }}>
+                  <div style={{ width: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>#{rank}</div>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(to bottom right, #8b5cf6, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', border: '2px solid #4ade80' }}>{game.user?.cls?.char}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>{game.user?.name} <span style={{ color: '#4ade80', fontSize: '12px' }}>(You)</span> <span style={{ color: '#fbbf24', fontSize: '14px' }}>{'⭐'.repeat(Math.min(game.ascension, 3))}</span></div>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{getTitle().name}</div>
+                  </div>
+                  <div style={{ fontWeight: 'bold', color: '#4ade80' }}>Lv.{level}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== TOWER / RAID / EVENT =====
+      if (["tower", "raid", "event"].includes(game.screen)) {
+        const data = {
+          tower: { icon: "🗼", title: "Tower of Faith", desc: "Endless quiz challenge", color: "#8b5cf6" },
+          raid: { icon: "👹", title: "Guild Raid: Goliath", desc: "Work together to defeat!", color: "#ef4444" },
+          event: { icon: "🔥", title: "The Exodus Event", desc: "6d 23h remaining", color: "#f97316" },
+        }[game.screen];
+        return (
+          <div style={styles.screen}>
+            <div style={styles.gradientBg} />
+            <div style={{ position: 'relative', zIndex: 10 }}>
+              <header style={{ padding: '16px' }}><button onClick={() => setGame(p => ({ ...p, screen: "home" }))} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>←</button></header>
+              <div style={{ padding: '32px', textAlign: 'center' }}>
+                <div style={{ fontSize: '64px', marginBottom: '16px' }}>{data.icon}</div>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>{data.title}</h2>
+                <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '24px' }}>{data.desc}</p>
+                {game.screen === "event" && (
+                  <button onClick={() => { setUi(u => ({ ...u, chapter: "exo-1" })); setGame(p => ({ ...p, screen: "read" })); }}
+                    style={{ ...styles.btn, background: `linear-gradient(to right, ${data.color}, #d97706)` }}>Enter Event</button>
+                )}
+                {game.screen === "tower" && <button style={{ ...styles.btn, background: data.color }}>Start Run (1⚡)</button>}
+                {game.screen === "raid" && <button style={{ ...styles.btn, background: data.color }}>⚔️ Attack!</button>}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Fallback
+      return (
+        <div style={{ ...styles.screen, ...styles.center }}>
+          <button style={styles.btn} onClick={() => setGame(p => ({ ...p, screen: "home" }))}>Home</button>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
