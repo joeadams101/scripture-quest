@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Scripture Quest</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+    body{margin:0;font-family:system-ui,sans-serif;background:#000}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(251,191,36,.4)}50%{box-shadow:0 0 40px rgba(251,191,36,.7)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes scaleIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+    .aF{animation:float 3s ease-in-out infinite}.aP{animation:pulse 2s ease-in-out infinite}
+    .aG{animation:glow 2s ease-in-out infinite}.aS{animation:spin 1s linear infinite}
+    .aFI{animation:fadeIn .5s ease-out forwards}.aSI{animation:scaleIn .3s ease-out forwards}
+    .aShake{animation:shake .3s ease-in-out}
+    .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;padding:16px 32px;border-radius:16px;border:none;font-size:18px;cursor:pointer;width:100%}
+    .btn:active{transform:scale(.96)}.btn:disabled{opacity:.4}
+    .btn2{background:rgba(255,255,255,.1);color:#fff;font-weight:600;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);cursor:pointer;width:100%}
+    .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:16px}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useCallback}=React;
+
+const CLASSES=[
+  {id:"prophet",name:"Prophet",char:"🧙‍♂️",stats:{atk:12,def:8,hp:100,crit:10},ability:"Holy Fire"},
+  {id:"evangelist",name:"Evangelist",char:"🧑‍🦱",stats:{atk:10,def:10,hp:110,crit:8},ability:"Healing Word"},
+  {id:"psalmist",name:"Psalmist",char:"👨‍🦰",stats:{atk:8,def:12,hp:120,crit:5},ability:"Shield of Faith"},
+  {id:"apostle",name:"Apostle",char:"🧔",stats:{atk:14,def:6,hp:90,crit:15},ability:"Righteous Strike"}
+];
+
+const ENEMIES={
+  serpent:{name:"The Serpent",emoji:"🐍",hp:50,atk:8,xp:30,gold:15},
+  guards:{name:"Egyptian Guards",emoji:"⚔️",hp:70,atk:12,xp:50,gold:25},
+  pharaoh:{name:"Pharaoh",emoji:"👑",hp:120,atk:18,xp:100,gold:50,boss:true},
+  lion:{name:"Hungry Lion",emoji:"🦁",hp:60,atk:15,xp:40,gold:20}
+};
+
+const CHAPTERS={
+  "gen-1":{book:"Genesis",ch:1,title:"Creation",enemy:"serpent",
+    verses:["In the beginning God created the heaven and the earth.","And God said, Let there be light.","And God saw the light, that it was good."],
+    quiz:[{q:"What did God create first?",a:["Heaven and earth","Light","Man","Animals"],c:0},{q:"What did God call the light?",a:["Sun","Day","Morning","Bright"],c:1}]},
+  "gen-2":{book:"Genesis",ch:2,title:"Garden of Eden",enemy:"serpent",
+    verses:["On the seventh day God rested.","The LORD formed man from dust.","He breathed life into man."],
+    quiz:[{q:"What did God do on day seven?",a:["Created man","Rested","Made animals","Planted"],c:1},{q:"Man was formed from?",a:["Water","Dust","Light","Clay"],c:1}]},
+  "gen-3":{book:"Genesis",ch:3,title:"The Fall",enemy:"serpent",boss:true,
+    verses:["The serpent was cunning.","He deceived the woman.","She ate the forbidden fruit."],
+    quiz:[{q:"Who tempted Eve?",a:["Lion","Serpent","Eagle","Adam"],c:1},{q:"What happened after eating?",a:["Nothing","Eyes opened","They died","Flew"],c:1}]},
+  "exo-1":{book:"Exodus",ch:1,title:"Slavery in Egypt",enemy:"guards",
+    verses:["Israel multiplied in Egypt.","A new Pharaoh arose.","He made them slaves."],
+    quiz:[{q:"Where were Israelites enslaved?",a:["Canaan","Egypt","Babylon","Rome"],c:1}]},
+  "exo-14":{book:"Exodus",ch:14,title:"Red Sea",enemy:"pharaoh",boss:true,
+    verses:["Pharaoh's army pursued Israel.","Moses stretched his hand.","The sea parted."],
+    quiz:[{q:"Who parted the sea?",a:["Aaron","Moses","Joshua","Pharaoh"],c:1},{q:"How did Israel cross?",a:["Swimming","Boats","Dry ground","Flying"],c:2}]}
+};
+
+const REGIONS=[
+  {id:"creation",name:"Creation",icon:"🌍",chapters:["gen-1","gen-2","gen-3"],lvl:1},
+  {id:"exodus",name:"Exodus",icon:"🔥",chapters:["exo-1","exo-14"],lvl:5}
+];
+
+const COMPANIONS=[
+  {id:"ruth",name:"Ruth",emoji:"🌾",rarity:"Rare",stats:{atk:3,def:2,hp:20}},
+  {id:"samuel",name:"Samuel",emoji:"📢",rarity:"Rare",stats:{atk:4,def:1,hp:15}},
+  {id:"peter",name:"Peter",emoji:"🪨",rarity:"Epic",stats:{atk:6,def:4,hp:30}},
+  {id:"moses",name:"Moses",emoji:"⚡",rarity:"Legendary",stats:{atk:10,def:6,hp:40}}
+];
+
+const GEAR=[
+  {id:"staff0",name:"Walking Stick",icon:"🪵",slot:"weapon",rarity:"Common",stats:{atk:2}},
+  {id:"robe0",name:"Simple Robe",icon:"👘",slot:"armor",rarity:"Common",stats:{def:2,hp:10}},
+  {id:"staff1",name:"Shepherd Rod",icon:"🪝",slot:"weapon",rarity:"Rare",stats:{atk:5,crit:5}},
+  {id:"shield1",name:"Bronze Shield",icon:"🛡️",slot:"armor",rarity:"Rare",stats:{def:6,hp:25}},
+  {id:"staff2",name:"Prophet Staff",icon:"🔮",slot:"weapon",rarity:"Epic",stats:{atk:10,crit:8}},
+  {id:"staff3",name:"Staff of Moses",icon:"⚡",slot:"weapon",rarity:"Legendary",stats:{atk:18,crit:12}}
+];
+
+const RARITY={Common:{bg:"#4b5563",border:"#9ca3af"},Rare:{bg:"#1d4ed8",border:"#60a5fa"},Epic:{bg:"#7c3aed",border:"#a78bfa"},Legendary:{bg:"#d97706",border:"#fbbf24"}};
+const XP_TABLE=[0,100,250,500,800,1200,1700,2300,3000,4000,5500,7000,9000,11500,14500];
+
+const save=d=>{try{localStorage.setItem('sq3',JSON.stringify(d))}catch(e){}};
+const load=()=>{try{return JSON.parse(localStorage.getItem('sq3'))}catch(e){return null}};
+const getLvl=xp=>{for(let i=XP_TABLE.length-1;i>=0;i--)if(xp>=XP_TABLE[i])return i+1;return 1};
+const getXpProg=xp=>{const l=getLvl(xp),c=xp-(XP_TABLE[l-1]||0),n=(XP_TABLE[l]||99999)-(XP_TABLE[l-1]||0);return{cur:c,need:n,pct:Math.min(c/n*100,100)}};
+
+function App(){
+  const[game,setGame]=useState(()=>load()||{
+    screen:"splash",user:null,tutDone:false,completed:{},stars:{},
+    inv:[],companions:[],eq:{weapon:null,armor:null,companion:null},
+    gold:0,tickets:3,energy:5,items:{potion:2,revive:1},towerBest:0,currentChapter:null
+  });
+  const[ui,setUi]=useState({name:"",cls:null,battle:null,showRegion:null,tab:"gear",pulling:false,summonResult:null,gearDrop:null,levelUp:null});
+
+  useEffect(()=>{if(game.user)save(game)},[game]);
+
+  const getStats=useCallback(()=>{
+    if(!game.user)return{atk:10,def:5,hp:100,crit:5,maxHp:100};
+    const base={...game.user.cls.stats};
+    const lvl=getLvl(game.user.xp);
+    base.atk+=Math.floor(lvl*1.5);base.def+=Math.floor(lvl*.8);base.hp+=lvl*5;base.crit+=Math.floor(lvl*.3);
+    ['weapon','armor'].forEach(slot=>{const g=game.eq[slot];if(g?.stats)Object.entries(g.stats).forEach(([k,v])=>base[k]=(base[k]||0)+v)});
+    const c=game.eq.companion;if(c?.stats)Object.entries(c.stats).forEach(([k,v])=>base[k]=(base[k]||0)+v);
+    base.maxHp=base.hp;return base;
+  },[game.user,game.eq]);
+
+  const getPower=useCallback(()=>{const s=getStats();return Math.floor(s.atk*2+s.def*1.5+s.hp*.5+s.crit*3)},[getStats]);
+
+  // SPLASH
+  if(game.screen==="splash")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div className="aFI" style={{textAlign:'center'}}>
+        <div style={{fontSize:100,marginBottom:20}} className="aF">⚔️</div>
+        <h1 style={{fontSize:42,fontWeight:900,color:'#fbbf24',marginBottom:8}}>Scripture Quest</h1>
+        <p style={{color:'rgba(255,255,255,.5)',marginBottom:50}}>Battle Through The Word</p>
+        <button className="btn aG" style={{width:'auto',padding:'18px 48px'}} onClick={()=>setGame(g=>({...g,screen:"intro"}))}>Begin Adventure</button>
+      </div>
+    </div>
+  );
+
+  // INTRO
+  if(game.screen==="intro")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div className="aFI" style={{maxWidth:360,textAlign:'center'}}>
+        <h2 style={{fontSize:26,fontWeight:700,marginBottom:20}}>How It Works</h2>
+        <div style={{textAlign:'left',marginBottom:24}}>
+          <p style={{marginBottom:12}}><span style={{color:'#fbbf24'}}>📖 Read</span> - Study Scripture passages</p>
+          <p style={{marginBottom:12}}><span style={{color:'#ef4444'}}>⚔️ Battle</span> - Fight enemies with quiz attacks</p>
+          <p style={{marginBottom:12}}><span style={{color:'#8b5cf6'}}>🎒 Collect</span> - Gear up with loot drops</p>
+          <p><span style={{color:'#3b82f6'}}>🗼 Climb</span> - Challenge the Tower</p>
+        </div>
+        <button className="btn" onClick={()=>setGame(g=>({...g,screen:"name"}))}>Continue</button>
+      </div>
+    </div>
+  );
+
+  // NAME
+  if(game.screen==="name")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div className="aFI" style={{maxWidth:360,width:'100%',textAlign:'center'}}>
+        <h2 style={{fontSize:26,fontWeight:700,marginBottom:24}}>Name Your Hero</h2>
+        <input type="text" value={ui.name} onChange={e=>setUi(u=>({...u,name:e.target.value}))} placeholder="Enter name..." maxLength={12} style={{width:'100%',padding:18,fontSize:20,background:'rgba(255,255,255,.05)',border:'2px solid rgba(255,255,255,.2)',borderRadius:16,color:'#fff',textAlign:'center',outline:'none',marginBottom:24}}/>
+        <button className="btn" disabled={ui.name.trim().length<2} onClick={()=>setGame(g=>({...g,screen:"class"}))}>Continue</button>
+      </div>
+    </div>
+  );
+
+  // CLASS
+  if(game.screen==="class")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',padding:20}}>
+      <div className="aFI" style={{maxWidth:400,margin:'0 auto'}}>
+        <h2 style={{fontSize:24,fontWeight:700,textAlign:'center',marginBottom:20}}>Choose Your Class</h2>
+        <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:20}}>
+          {CLASSES.map(c=>(
+            <button key={c.id} onClick={()=>setUi(u=>({...u,cls:c}))} style={{display:'flex',alignItems:'center',gap:14,padding:14,background:ui.cls?.id===c.id?'rgba(251,191,36,.15)':'rgba(255,255,255,.05)',border:ui.cls?.id===c.id?'2px solid #fbbf24':'2px solid transparent',borderRadius:16,cursor:'pointer'}}>
+              <div style={{width:50,height:50,borderRadius:12,background:'#1e293b',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{c.char}</div>
+              <div style={{flex:1,textAlign:'left'}}>
+                <div style={{fontWeight:700,fontSize:16}}>{c.name}</div>
+                <div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>ATK:{c.stats.atk} DEF:{c.stats.def} HP:{c.stats.hp}</div>
+              </div>
+              {ui.cls?.id===c.id&&<span style={{color:'#fbbf24',fontSize:20}}>✓</span>}
+            </button>
+          ))}
+        </div>
+        <button className="btn" disabled={!ui.cls} onClick={()=>{
+          const gear=[GEAR[0],GEAR[1]];
+          setGame(g=>({...g,screen:"tutStart",user:{name:ui.name.trim(),cls:ui.cls,xp:0},inv:gear,eq:{weapon:gear[0],armor:gear[1],companion:null}}));
+        }}>Begin as {ui.cls?.name||'...'}</button>
+      </div>
+    </div>
+  );
+
+  // TUT START
+  if(game.screen==="tutStart")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div className="aFI" style={{maxWidth:360,textAlign:'center'}}>
+        <div style={{fontSize:80,marginBottom:16}}>{game.user?.cls?.char}</div>
+        <h2 style={{fontSize:26,fontWeight:700,marginBottom:4}}>Welcome, {game.user?.name}!</h2>
+        <p style={{color:'#fbbf24',marginBottom:24}}>Power: ⚡{getPower()}</p>
+        <div className="card" style={{marginBottom:24,textAlign:'left'}}>
+          <p style={{color:'rgba(255,255,255,.7)',fontSize:14}}>📖 Read <strong>Genesis 1</strong>, then battle <strong>The Serpent</strong>! Answer quiz questions to deal damage.</p>
+        </div>
+        <button className="btn" onClick={()=>setGame(g=>({...g,screen:"read",currentChapter:"gen-1"}))}>Start Quest ⚔️</button>
+      </div>
+    </div>
+  );
+
+  // READ
+  if(game.screen==="read"){
+    const ch=CHAPTERS[game.currentChapter];if(!ch)return null;
+    const enemy=ENEMIES[ch.enemy];
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1a1a2e,#0f0f1a)',color:'#fff'}}>
+        <header style={{padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+          <button onClick={()=>setGame(g=>({...g,screen:"home",tutDone:true}))} style={{background:'rgba(255,255,255,.1)',border:'none',borderRadius:'50%',width:40,height:40,color:'#fff',fontSize:18,cursor:'pointer'}}>←</button>
+          <div style={{textAlign:'center'}}><div style={{fontWeight:700}}>{ch.book} {ch.ch}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>{ch.title}</div></div>
+          <div style={{width:40}}/>
+        </header>
+        <div style={{padding:16,background:'linear-gradient(to bottom,rgba(239,68,68,.1),transparent)',textAlign:'center'}}>
+          <span style={{fontSize:36}}>{enemy.emoji}</span>
+          <div style={{fontWeight:700,color:'#ef4444'}}>{enemy.name}{ch.boss?' 👑':''}</div>
+          <div style={{fontSize:12,color:'rgba(255,255,255,.5)'}}>HP:{ch.boss?enemy.hp*1.5:enemy.hp} ATK:{enemy.atk}</div>
+        </div>
+        <div style={{padding:20}}>
+          <div className="card" style={{marginBottom:20}}>
+            {ch.verses.map((v,i)=><p key={i} style={{marginBottom:12,fontSize:17,lineHeight:1.6}}><span style={{color:'#fbbf24',marginRight:8}}>{i+1}.</span>{v}</p>)}
+          </div>
+          <button className="btn" onClick={()=>{
+            const stats=getStats();const eHp=ch.boss?Math.floor(enemy.hp*1.5):enemy.hp;
+            setUi(u=>({...u,battle:{playerHp:stats.maxHp,playerMaxHp:stats.maxHp,enemyHp:eHp,enemyMaxHp:eHp,combo:0,maxCombo:0,quizIdx:0,phase:'action',shielded:false}}));
+            setGame(g=>({...g,screen:"battle"}));
+          }}>⚔️ Enter Battle</button>
+        </div>
+      </div>
+    );
+  }
+
+  // BATTLE
+  if(game.screen==="battle"){
+    const ch=CHAPTERS[game.currentChapter];const enemy=ENEMIES[ch.enemy];const b=ui.battle;const stats=getStats();
+    if(!b)return null;
+
+    // VICTORY
+    if(b.enemyHp<=0){
+      const xpGain=Math.floor(enemy.xp*(1+b.maxCombo*.1));const goldGain=Math.floor(enemy.gold*(1+b.maxCombo*.05));
+      const stars=b.playerHp>b.playerMaxHp*.7?3:b.playerHp>b.playerMaxHp*.3?2:1;
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#064e3b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+          <div className="aSI" style={{textAlign:'center'}}>
+            <div style={{fontSize:72,marginBottom:16}}>🎉</div>
+            <h2 style={{fontSize:28,fontWeight:700}}>Victory!</h2>
+            <div style={{marginBottom:16}}>{[1,2,3].map(s=><span key={s} style={{fontSize:28,color:s<=stars?'#fbbf24':'rgba(255,255,255,.2)'}}>⭐</span>)}</div>
+            <div className="card" style={{marginBottom:20}}>
+              <div style={{display:'flex',justifyContent:'space-around'}}>
+                <div><div style={{color:'#fbbf24',fontWeight:700,fontSize:22}}>+{xpGain}</div><div style={{fontSize:12,color:'rgba(255,255,255,.5)'}}>XP</div></div>
+                <div><div style={{color:'#fcd34d',fontWeight:700,fontSize:22}}>+{goldGain}</div><div style={{fontSize:12,color:'rgba(255,255,255,.5)'}}>Gold</div></div>
+              </div>
+            </div>
+            <button className="btn" onClick={()=>{
+              const oldLvl=getLvl(game.user.xp);const newXp=game.user.xp+xpGain;const newLvl=getLvl(newXp);
+              let drop=null;
+              if(Math.random()<(ch.boss?.5:.25)){
+                const tier=ch.boss?(Math.random()<.3?'Epic':'Rare'):(Math.random()<.15?'Rare':'Common');
+                const pool=GEAR.filter(g=>g.rarity===tier);
+                if(pool.length)drop=pool[Math.floor(Math.random()*pool.length)];
+              }
+              setGame(g=>({...g,screen:drop?"gearDrop":"home",user:{...g.user,xp:newXp},gold:g.gold+goldGain,completed:{...g.completed,[game.currentChapter]:true},stars:{...g.stars,[game.currentChapter]:Math.max(g.stars[game.currentChapter]||0,stars)},tutDone:true,inv:drop?[...g.inv,drop]:g.inv}));
+              setUi(u=>({...u,battle:null,gearDrop:drop,levelUp:newLvl>oldLvl?newLvl:null}));
+            }}>Continue</button>
+          </div>
+        </div>
+      );
+    }
+
+    // DEFEAT
+    if(b.playerHp<=0){
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#7f1d1d,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+          <div className="aSI" style={{textAlign:'center'}}>
+            <div style={{fontSize:72,marginBottom:16}}>💀</div>
+            <h2 style={{fontSize:28,fontWeight:700,marginBottom:24}}>Defeated!</h2>
+            {game.items.revive>0&&<button className="btn" style={{marginBottom:12,background:'linear-gradient(135deg,#22c55e,#16a34a)'}} onClick={()=>{setGame(g=>({...g,items:{...g.items,revive:g.items.revive-1}}));setUi(u=>({...u,battle:{...b,playerHp:Math.floor(b.playerMaxHp/2)}}));}}>🪶 Revive (Phoenix Down)</button>}
+            <button className="btn2" style={{marginBottom:12}} onClick={()=>{if(game.energy>0){setGame(g=>({...g,energy:g.energy-1,screen:"read"}));setUi(u=>({...u,battle:null}))}}}>🔄 Retry (-1⚡)</button>
+            <button className="btn2" onClick={()=>{setGame(g=>({...g,screen:"home",tutDone:true}));setUi(u=>({...u,battle:null}))}}>Return Home</button>
+          </div>
+        </div>
+      );
+    }
+
+    // QUIZ PHASE
+    if(b.phase==="quiz"){
+      const q=ch.quiz[b.quizIdx%ch.quiz.length];
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1a1a2e,#0f0f1a)',color:'#fff',padding:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+            <div style={{flex:1,marginRight:16}}><div style={{fontSize:11,marginBottom:4}}>You</div><div style={{height:8,background:'rgba(255,255,255,.1)',borderRadius:10}}><div style={{height:'100%',width:`${(b.playerHp/b.playerMaxHp)*100}%`,background:'#22c55e',borderRadius:10}}/></div></div>
+            <div style={{flex:1}}><div style={{fontSize:11,marginBottom:4,textAlign:'right'}}>{enemy.name}</div><div style={{height:8,background:'rgba(255,255,255,.1)',borderRadius:10}}><div style={{height:'100%',width:`${(b.enemyHp/b.enemyMaxHp)*100}%`,background:'#ef4444',borderRadius:10}}/></div></div>
+          </div>
+          {b.combo>0&&<div style={{textAlign:'center',marginBottom:16}}><span style={{background:'#f97316',padding:'4px 12px',borderRadius:12,fontWeight:700,fontSize:13}}>🔥 {b.combo}x COMBO</span></div>}
+          <div style={{textAlign:'center',marginBottom:24}}><div style={{fontSize:12,color:'rgba(255,255,255,.5)',marginBottom:8}}>Answer to Attack!</div><h2 style={{fontSize:20,fontWeight:600}}>{q.q}</h2></div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {q.a.map((ans,i)=>(
+              <button key={i} onClick={()=>{
+                const correct=i===q.c;const newCombo=correct?b.combo+1:0;
+                let dmg=correct?stats.atk+Math.floor(newCombo*2):0;
+                if(correct&&Math.random()*100<stats.crit){dmg=Math.floor(dmg*2)}
+                const newEnemyHp=Math.max(0,b.enemyHp-dmg);
+                setUi(u=>({...u,battle:{...b,phase:'result',combo:newCombo,maxCombo:Math.max(b.maxCombo,newCombo),enemyHp:newEnemyHp,lastResult:{correct,dmg},quizIdx:b.quizIdx+1}}));
+                setTimeout(()=>{if(newEnemyHp>0)setTimeout(()=>setUi(u=>({...u,battle:{...u.battle,phase:'enemyTurn'}})),500)},800);
+              }} style={{padding:16,background:'rgba(255,255,255,.05)',border:'2px solid rgba(255,255,255,.15)',borderRadius:14,color:'#fff',fontSize:16,textAlign:'left',cursor:'pointer'}}>
+                {String.fromCharCode(65+i)}. {ans}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // RESULT
+    if(b.phase==="result"){
+      const r=b.lastResult;
+      return(
+        <div style={{minHeight:'100vh',background:r.correct?'linear-gradient(to bottom,#064e3b,#0f0f1a)':'linear-gradient(to bottom,#7f1d1d,#0f0f1a)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div className="aSI" style={{textAlign:'center'}}>
+            <div style={{fontSize:72}}>{r.correct?'💥':'❌'}</div>
+            <h2 style={{fontSize:28,fontWeight:700}}>{r.correct?`${r.dmg} Damage!`:'Missed!'}</h2>
+          </div>
+        </div>
+      );
+    }
+
+    // ENEMY TURN
+    if(b.phase==="enemyTurn"){
+      const dmg=b.shielded?0:Math.max(1,enemy.atk-Math.floor(stats.def/2));
+      setTimeout(()=>setUi(u=>({...u,battle:{...u.battle,phase:'action',playerHp:Math.max(0,u.battle.playerHp-dmg),shielded:false}})),1200);
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#7f1d1d,#0f0f1a)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div className="aShake" style={{textAlign:'center'}}>
+            <div style={{fontSize:80}}>{enemy.emoji}</div>
+            <div style={{fontSize:20,fontWeight:600}}>{b.shielded?'Blocked!':enemy.name+' attacks for '+dmg+'!'}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ACTION PHASE
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1a1a2e,#0f0f1a)',color:'#fff',display:'flex',flexDirection:'column'}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20}}>
+          <div style={{marginBottom:8,width:'80%',maxWidth:280}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:4}}><span style={{color:'#ef4444'}}>{enemy.name}</span><span>{b.enemyHp}/{b.enemyMaxHp}</span></div>
+            <div style={{height:12,background:'rgba(0,0,0,.5)',borderRadius:10}}><div style={{height:'100%',width:`${(b.enemyHp/b.enemyMaxHp)*100}%`,background:'#ef4444',borderRadius:10}}/></div>
+          </div>
+          <div style={{fontSize:72}} className={b.enemyHp<b.enemyMaxHp*.3?'aShake':''}>{enemy.emoji}</div>
+        </div>
+        <div style={{padding:20,background:'rgba(0,0,0,.3)',borderTop:'1px solid rgba(255,255,255,.1)'}}>
+          <div style={{marginBottom:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:4}}><span>{game.user?.cls?.char} {game.user?.name}</span><span style={{color:'#22c55e'}}>{b.playerHp}/{b.playerMaxHp} HP</span></div>
+            <div style={{height:14,background:'rgba(0,0,0,.5)',borderRadius:10}}><div style={{height:'100%',width:`${(b.playerHp/b.playerMaxHp)*100}%`,background:'#22c55e',borderRadius:10}}/></div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+            <button onClick={()=>setUi(u=>({...u,battle:{...b,phase:'quiz'}}))} style={{padding:16,background:'linear-gradient(135deg,#ef4444,#dc2626)',border:'none',borderRadius:14,color:'#fff',fontWeight:700,cursor:'pointer'}}>⚔️ Attack</button>
+            <button onClick={()=>setUi(u=>({...u,battle:{...b,shielded:true,phase:'enemyTurn'}}))} style={{padding:16,background:'linear-gradient(135deg,#3b82f6,#2563eb)',border:'none',borderRadius:14,color:'#fff',fontWeight:700,cursor:'pointer'}}>🛡️ Defend</button>
+          </div>
+          <button disabled={game.items.potion<=0} onClick={()=>{setGame(g=>({...g,items:{...g.items,potion:g.items.potion-1}}));setUi(u=>({...u,battle:{...b,playerHp:Math.min(b.playerMaxHp,b.playerHp+50),phase:'enemyTurn'}}))}} style={{width:'100%',padding:14,background:game.items.potion>0?'linear-gradient(135deg,#22c55e,#16a34a)':'rgba(34,197,94,.2)',border:'none',borderRadius:14,color:'#fff',fontWeight:600,cursor:game.items.potion>0?'pointer':'not-allowed',opacity:game.items.potion>0?1:.5}}>🧪 Use Potion ({game.items.potion})</button>
+        </div>
+      </div>
+    );
+  }
+
+  // GEAR DROP
+  if(game.screen==="gearDrop"){
+    const gear=ui.gearDrop;if(!gear){setGame(g=>({...g,screen:"home"}));return null}
+    const r=RARITY[gear.rarity];
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="aSI" style={{textAlign:'center'}}>
+          <div style={{color:'#fbbf24',fontSize:12,fontWeight:700,letterSpacing:2,marginBottom:16}}>⚔️ LOOT DROP ⚔️</div>
+          <div style={{width:100,height:100,borderRadius:20,background:r.bg,border:`3px solid ${r.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:48,margin:'0 auto 16px'}}>{gear.icon}</div>
+          <h2 style={{fontSize:22,fontWeight:700,marginBottom:4}}>{gear.name}</h2>
+          <div style={{color:r.border,fontSize:13,marginBottom:16}}>{gear.rarity}</div>
+          <button className="btn" onClick={()=>{setUi(u=>({...u,gearDrop:null}));setGame(g=>({...g,screen:"home"}))}}>Continue</button>
+        </div>
+      </div>
+    );
+  }
+
+  // HOME
+  if(game.screen==="home"){
+    const u=game.user;if(!u)return null;
+    const lvl=getLvl(u.xp),prog=getXpProg(u.xp),stats=getStats(),power=getPower();
+    let nextCh=null;for(const r of REGIONS){if(lvl>=r.lvl){for(const c of r.chapters){if(!game.completed[c]){nextCh=c;break}}if(nextCh)break}}
+    const next=nextCh?CHAPTERS[nextCh]:null;
+
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#0f172a,#000)',color:'#fff'}}>
+        {ui.levelUp&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.95)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}><div className="aSI" style={{textAlign:'center'}}><div style={{fontSize:80}}>⬆️</div><h2 style={{fontSize:36,fontWeight:900,color:'#fbbf24'}}>LEVEL {ui.levelUp}!</h2><button className="btn" style={{marginTop:24,width:'auto',padding:'14px 40px'}} onClick={()=>setUi(u=>({...u,levelUp:null}))}>Awesome!</button></div></div>}
+        
+        <header style={{padding:'12px 16px',display:'flex',justifyContent:'space-between'}}>
+          <div style={{background:'rgba(251,191,36,.3)',padding:'6px 12px',borderRadius:20}}><span>🪙</span> <span style={{fontWeight:700,color:'#fcd34d'}}>{game.gold}</span></div>
+          <div style={{display:'flex',gap:8}}>
+            <div style={{background:'rgba(59,130,246,.3)',padding:'6px 12px',borderRadius:20}}><span>⚡</span> <span style={{fontWeight:700,color:'#93c5fd'}}>{game.energy}/5</span></div>
+            <div style={{background:'rgba(236,72,153,.3)',padding:'6px 12px',borderRadius:20}}><span>🎟️</span> <span style={{fontWeight:700,color:'#f9a8d4'}}>{game.tickets}</span></div>
+          </div>
+        </header>
+
+        <div style={{margin:'0 16px 16px',background:'rgba(30,41,59,.8)',border:'1px solid rgba(255,255,255,.1)',borderRadius:20,padding:16}}>
+          <div style={{display:'flex',gap:16}}>
+            <div style={{position:'relative'}}>
+              <div style={{width:80,height:80,borderRadius:16,background:'#1e293b',border:'3px solid rgba(251,191,36,.5)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:42}}>{u.cls.char}</div>
+              <div style={{position:'absolute',bottom:-6,left:'50%',transform:'translateX(-50%)',background:'#f59e0b',color:'#000',fontWeight:900,fontSize:11,padding:'2px 10px',borderRadius:10}}>Lv.{lvl}</div>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}><h2 style={{fontSize:18,fontWeight:700}}>{u.name}</h2><div style={{background:'rgba(139,92,246,.2)',padding:'4px 10px',borderRadius:8,fontSize:12,fontWeight:700,color:'#a78bfa'}}>⚡{power}</div></div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:4,fontSize:10}}>
+                <div style={{background:'rgba(239,68,68,.15)',padding:6,borderRadius:6,textAlign:'center'}}><div style={{color:'#f87171',fontWeight:700}}>{stats.atk}</div><div style={{color:'rgba(255,255,255,.5)'}}>ATK</div></div>
+                <div style={{background:'rgba(59,130,246,.15)',padding:6,borderRadius:6,textAlign:'center'}}><div style={{color:'#60a5fa',fontWeight:700}}>{stats.def}</div><div style={{color:'rgba(255,255,255,.5)'}}>DEF</div></div>
+                <div style={{background:'rgba(34,197,94,.15)',padding:6,borderRadius:6,textAlign:'center'}}><div style={{color:'#4ade80',fontWeight:700}}>{stats.maxHp}</div><div style={{color:'rgba(255,255,255,.5)'}}>HP</div></div>
+                <div style={{background:'rgba(251,191,36,.15)',padding:6,borderRadius:6,textAlign:'center'}}><div style={{color:'#fbbf24',fontWeight:700}}>{stats.crit}%</div><div style={{color:'rgba(255,255,255,.5)'}}>CRIT</div></div>
+              </div>
+              <div style={{marginTop:8}}><div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'rgba(255,255,255,.5)',marginBottom:2}}><span>XP</span><span>{prog.cur}/{prog.need}</span></div><div style={{height:6,background:'rgba(0,0,0,.5)',borderRadius:10}}><div style={{height:'100%',width:`${prog.pct}%`,background:'#f59e0b',borderRadius:10}}/></div></div>
+            </div>
+          </div>
+        </div>
+
+        {next?(
+          <div style={{padding:'0 16px',marginBottom:16}}>
+            <button onClick={()=>setGame(g=>({...g,screen:"read",currentChapter:nextCh}))} style={{width:'100%',background:'linear-gradient(135deg,rgba(146,64,14,.5),rgba(120,53,15,.5))',border:'2px solid rgba(251,191,36,.5)',borderRadius:20,padding:16,textAlign:'left',cursor:'pointer'}}>
+              <div style={{color:'rgba(251,191,36,.8)',fontSize:11,fontWeight:700,marginBottom:4}}>NEXT QUEST</div>
+              <div style={{fontSize:18,fontWeight:700}}>{next.book} {next.ch}</div>
+              <div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>{ENEMIES[next.enemy].emoji} {ENEMIES[next.enemy].name}{next.boss?' 👑':''}</div>
+            </button>
+          </div>
+        ):(
+          <div style={{padding:'0 16px',marginBottom:16}} className="card"><div style={{textAlign:'center',padding:16}}><div style={{fontSize:48}}>🎉</div><div style={{fontWeight:700}}>All quests complete!</div></div></div>
+        )}
+
+        <div style={{padding:'0 16px',marginBottom:16}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+            {[{icon:"🗺️",name:"Campaign",scr:"campaign"},{icon:"🗼",name:"Tower",scr:"tower"},{icon:"🎒",name:"Gear",scr:"inventory"},{icon:"✨",name:"Summon",scr:"summon"}].map(b=>(
+              <button key={b.name} onClick={()=>setGame(g=>({...g,screen:b.scr}))} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:'14px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer'}}>
+                <span style={{fontSize:26}}>{b.icon}</span><span style={{fontSize:11,color:'rgba(255,255,255,.7)'}}>{b.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{padding:'0 16px'}}>
+          <button onClick={()=>setGame(g=>({...g,screen:"shop"}))} style={{width:'100%',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:14,display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}>
+            <span style={{fontSize:28}}>🏪</span><div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:700}}>Shop</div><div style={{color:'rgba(255,255,255,.5)',fontSize:12}}>Potions, Energy, Tickets</div></div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // CAMPAIGN
+  if(game.screen==="campaign"){
+    const lvl=getLvl(game.user?.xp||0);
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+          <button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button>
+          <div style={{fontWeight:700,fontSize:18}}>Campaign</div>
+        </header>
+        <div style={{padding:16}}>
+          {REGIONS.map(r=>{
+            const unlocked=lvl>=r.lvl;const done=r.chapters.filter(c=>game.completed[c]).length;
+            return(
+              <button key={r.id} disabled={!unlocked} onClick={()=>unlocked&&setUi(u=>({...u,showRegion:r}))} style={{width:'100%',padding:16,marginBottom:12,background:unlocked?'rgba(251,191,36,.08)':'rgba(255,255,255,.02)',border:unlocked?'2px solid rgba(251,191,36,.3)':'1px solid rgba(255,255,255,.1)',borderRadius:16,display:'flex',alignItems:'center',gap:14,cursor:unlocked?'pointer':'not-allowed',opacity:unlocked?1:.5}}>
+                <div style={{width:50,height:50,borderRadius:14,background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>{unlocked?r.icon:"🔒"}</div>
+                <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:700}}>{r.name}</div>{unlocked?<div style={{color:'#fbbf24',fontSize:12}}>{done}/{r.chapters.length} done</div>:<div style={{color:'rgba(255,255,255,.5)',fontSize:12}}>Lv.{r.lvl}</div>}</div>
+              </button>
+            );
+          })}
+        </div>
+        {ui.showRegion&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.85)',zIndex:50,display:'flex',alignItems:'flex-end'}} onClick={()=>setUi(u=>({...u,showRegion:null}))}>
+          <div style={{background:'#1e293b',borderRadius:'24px 24px 0 0',padding:20,width:'100%'}} onClick={e=>e.stopPropagation()}>
+            <h3 style={{fontSize:20,fontWeight:700,marginBottom:16}}>{ui.showRegion.name}</h3>
+            {ui.showRegion.chapters.map(cId=>{const ch=CHAPTERS[cId];const done=game.completed[cId];const stars=game.stars[cId]||0;
+              return(<button key={cId} onClick={()=>{setUi(u=>({...u,showRegion:null}));setGame(g=>({...g,screen:"read",currentChapter:cId}))}} style={{width:'100%',padding:14,marginBottom:10,borderRadius:12,display:'flex',alignItems:'center',gap:12,cursor:'pointer',background:done?'rgba(34,197,94,.08)':'rgba(255,255,255,.05)',border:done?'1px solid rgba(34,197,94,.3)':'1px solid rgba(255,255,255,.1)'}}>
+                <span style={{fontSize:24}}>{ENEMIES[ch.enemy].emoji}</span>
+                <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:600}}>{ch.book} {ch.ch}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:12}}>{ch.title}</div></div>
+                <div>{[1,2,3].map(s=><span key={s} style={{color:s<=stars?'#fbbf24':'rgba(255,255,255,.2)'}}>⭐</span>)}</div>
+              </button>)})}
+            <button className="btn2" style={{marginTop:8}} onClick={()=>setUi(u=>({...u,showRegion:null}))}>Close</button>
+          </div>
+        </div>}
+      </div>
+    );
+  }
+
+  // TOWER
+  if(game.screen==="tower"){
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+          <button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button>
+          <div style={{fontWeight:700,fontSize:18}}>Tower of Faith</div>
+        </header>
+        <div style={{padding:24,textAlign:'center'}}>
+          <div style={{fontSize:80,marginBottom:16}}>🗼</div>
+          <h2 style={{fontSize:24,fontWeight:700,marginBottom:8}}>Tower of Faith</h2>
+          <p style={{color:'rgba(255,255,255,.5)',marginBottom:8}}>Endless challenge mode</p>
+          <p style={{color:'#fbbf24',marginBottom:24}}>🏆 Best: Floor {game.towerBest}</p>
+          <div className="card" style={{marginBottom:24,textAlign:'center',padding:32}}>
+            <div style={{fontSize:48,marginBottom:8}}>🚧</div>
+            <div style={{fontWeight:700}}>Coming Soon!</div>
+            <div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>Full tower mode in next update</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // INVENTORY
+  if(game.screen==="inventory"){
+    const stats=getStats();
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+          <button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button>
+          <div style={{fontWeight:700,fontSize:18}}>Equipment</div>
+          <div style={{marginLeft:'auto',background:'rgba(139,92,246,.2)',padding:'4px 10px',borderRadius:8,fontSize:12,fontWeight:700,color:'#a78bfa'}}>⚡{getPower()}</div>
+        </header>
+        <div style={{padding:16}}>
+          <div style={{display:'flex',gap:16,marginBottom:20}}>
+            <div style={{position:'relative',width:100}}>
+              <div style={{width:90,height:90,borderRadius:16,background:'#1e293b',border:'3px solid rgba(251,191,36,.4)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:44,margin:'0 auto'}}>{game.user?.cls?.char}</div>
+              {game.eq.weapon&&<div style={{position:'absolute',top:0,right:0,width:28,height:28,borderRadius:6,background:RARITY[game.eq.weapon.rarity].bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>{game.eq.weapon.icon}</div>}
+              {game.eq.armor&&<div style={{position:'absolute',bottom:0,right:0,width:28,height:28,borderRadius:6,background:RARITY[game.eq.armor.rarity].bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>{game.eq.armor.icon}</div>}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,fontSize:12}}>
+                <div style={{background:'rgba(239,68,68,.1)',padding:8,borderRadius:8}}><span style={{color:'#f87171',fontWeight:700}}>{stats.atk}</span> ATK</div>
+                <div style={{background:'rgba(59,130,246,.1)',padding:8,borderRadius:8}}><span style={{color:'#60a5fa',fontWeight:700}}>{stats.def}</span> DEF</div>
+                <div style={{background:'rgba(34,197,94,.1)',padding:8,borderRadius:8}}><span style={{color:'#4ade80',fontWeight:700}}>{stats.maxHp}</span> HP</div>
+                <div style={{background:'rgba(251,191,36,.1)',padding:8,borderRadius:8}}><span style={{color:'#fbbf24',fontWeight:700}}>{stats.crit}%</span> CRIT</div>
+              </div>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:8,marginBottom:16}}>
+            <button onClick={()=>setUi(u=>({...u,tab:"gear"}))} style={{flex:1,padding:12,borderRadius:10,fontWeight:600,background:ui.tab==="gear"?'#f59e0b':'rgba(255,255,255,.1)',color:ui.tab==="gear"?'#000':'#fff',border:'none',cursor:'pointer'}}>⚔️ Gear</button>
+            <button onClick={()=>setUi(u=>({...u,tab:"comp"}))} style={{flex:1,padding:12,borderRadius:10,fontWeight:600,background:ui.tab==="comp"?'#f59e0b':'rgba(255,255,255,.1)',color:ui.tab==="comp"?'#000':'#fff',border:'none',cursor:'pointer'}}>👥 Companions</button>
+          </div>
+          {ui.tab==="gear"&&(game.inv.length===0?<p style={{textAlign:'center',color:'rgba(255,255,255,.4)',padding:32}}>No gear yet</p>:(
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+              {game.inv.map((item,i)=>{const r=RARITY[item.rarity];const isEq=game.eq[item.slot]?.id===item.id;
+                return(<button key={i} onClick={()=>setGame(g=>({...g,eq:{...g.eq,[item.slot]:isEq?null:item}}))} style={{aspectRatio:'1',borderRadius:12,background:r.bg,border:isEq?'3px solid #4ade80':`2px solid ${r.border}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',position:'relative'}}>
+                  <span style={{fontSize:26}}>{item.icon}</span>{isEq&&<div style={{position:'absolute',top:2,right:2,width:14,height:14,borderRadius:'50%',background:'#4ade80',fontSize:9,display:'flex',alignItems:'center',justifyContent:'center'}}>✓</div>}
+                </button>)})}
+            </div>
+          ))}
+          {ui.tab==="comp"&&(game.companions.length===0?<p style={{textAlign:'center',color:'rgba(255,255,255,.4)',padding:32}}>No companions yet. Use Summon!</p>:(
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {game.companions.map((c,i)=>{const r=RARITY[c.rarity];const isEq=game.eq.companion?.id===c.id;
+                return(<button key={i} onClick={()=>setGame(g=>({...g,eq:{...g.eq,companion:isEq?null:c}}))} style={{padding:12,borderRadius:12,display:'flex',alignItems:'center',gap:12,cursor:'pointer',background:isEq?'rgba(34,197,94,.1)':'rgba(255,255,255,.05)',border:isEq?'2px solid #4ade80':'1px solid rgba(255,255,255,.1)'}}>
+                  <div style={{width:40,height:40,borderRadius:'50%',background:r.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>{c.emoji}</div>
+                  <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:600}}>{c.name}</div><div style={{fontSize:11,color:r.border}}>{c.rarity}</div></div>
+                  {isEq&&<span style={{color:'#4ade80'}}>✓</span>}
+                </button>)})}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // SUMMON
+  if(game.screen==="summon"){
+    if(ui.summonResult){const c=ui.summonResult;const r=RARITY[c.rarity];
+      return(<div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="aSI" style={{textAlign:'center'}}>
+          <div style={{width:100,height:100,borderRadius:'50%',background:r.bg,border:`3px solid ${r.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:48,margin:'0 auto 16px'}}>{c.emoji}</div>
+          <div style={{color:r.border,fontSize:12,fontWeight:700,marginBottom:8}}>★ {c.rarity.toUpperCase()} ★</div>
+          <h2 style={{fontSize:24,fontWeight:700,marginBottom:16}}>{c.name}</h2>
+          <button className="btn" onClick={()=>{setGame(g=>({...g,companions:[...g.companions,c]}));setUi(u=>({...u,summonResult:null}))}}>Continue</button>
+        </div>
+      </div>);
+    }
+    if(ui.pulling)return<div style={{minHeight:'100vh',background:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:60,height:60,borderRadius:'50%',border:'4px solid #8b5cf6',borderTopColor:'transparent'}} className="aS"/></div>;
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button>
+          <div style={{fontWeight:700,fontSize:18}}>Summon</div>
+          <div style={{background:'rgba(236,72,153,.2)',padding:'6px 12px',borderRadius:20}}>🎟️ {game.tickets}</div>
+        </header>
+        <div style={{padding:32,textAlign:'center'}}>
+          <div style={{fontSize:80,marginBottom:24}}>✨</div>
+          <button className="btn" disabled={game.tickets<1} style={{background:'linear-gradient(135deg,#ec4899,#8b5cf6)',marginBottom:24}} onClick={()=>{
+            setUi(u=>({...u,pulling:true}));
+            setTimeout(()=>{const roll=Math.random();const tier=roll<.05?'Legendary':roll<.2?'Epic':'Rare';const pool=COMPANIONS.filter(c=>c.rarity===tier);setGame(g=>({...g,tickets:g.tickets-1}));setUi(u=>({...u,pulling:false,summonResult:pool[Math.floor(Math.random()*pool.length)]}))},1500);
+          }}>Summon ×1</button>
+          <div style={{display:'flex',justifyContent:'center',gap:20}}>
+            <div><div style={{color:'#fbbf24',fontWeight:700}}>5%</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Legendary</div></div>
+            <div><div style={{color:'#a78bfa',fontWeight:700}}>15%</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Epic</div></div>
+            <div><div style={{color:'#60a5fa',fontWeight:700}}>80%</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Rare</div></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // SHOP
+  if(game.screen==="shop"){
+    const items=[{id:"energy",name:"Energy Refill",icon:"⚡",desc:"Restore 5 energy",price:100},{id:"potion",name:"Health Potion",icon:"🧪",desc:"Heal 50 HP in battle",price:75},{id:"revive",name:"Phoenix Down",icon:"🪶",desc:"Revive once",price:200},{id:"ticket",name:"Summon Ticket",icon:"🎟️",desc:"1 pull",price:500}];
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+          <button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button>
+          <div style={{fontWeight:700,fontSize:18}}>Shop</div>
+          <div style={{background:'rgba(251,191,36,.2)',padding:'6px 12px',borderRadius:20,color:'#fbbf24'}}>🪙 {game.gold}</div>
+        </header>
+        <div style={{padding:16}}>
+          {items.map(item=>{const ok=game.gold>=item.price;
+            return(<button key={item.id} disabled={!ok} onClick={()=>{
+              let up={gold:game.gold-item.price};
+              if(item.id==="energy")up.energy=5;
+              if(item.id==="potion")up.items={...game.items,potion:game.items.potion+1};
+              if(item.id==="revive")up.items={...game.items,revive:game.items.revive+1};
+              if(item.id==="ticket")up.tickets=game.tickets+1;
+              setGame(g=>({...g,...up}));
+            }} style={{width:'100%',padding:14,marginBottom:10,borderRadius:14,display:'flex',alignItems:'center',gap:12,cursor:ok?'pointer':'not-allowed',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',opacity:ok?1:.5}}>
+              <div style={{width:44,height:44,borderRadius:10,background:'rgba(251,191,36,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{item.icon}</div>
+              <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:700}}>{item.name}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:12}}>{item.desc}</div></div>
+              <div style={{color:'#fbbf24',fontWeight:700}}>🪙{item.price}</div>
+            </button>)})}
+        </div>
+        <div style={{padding:16}}>
+          <div className="card"><h3 style={{fontWeight:700,marginBottom:12}}>Your Items</h3>
+            <div style={{display:'flex',gap:12}}>
+              <div style={{flex:1,textAlign:'center',padding:10,background:'rgba(255,255,255,.05)',borderRadius:10}}><div style={{fontSize:20}}>🧪</div><div style={{fontWeight:700}}>{game.items.potion}</div></div>
+              <div style={{flex:1,textAlign:'center',padding:10,background:'rgba(255,255,255,.05)',borderRadius:10}}><div style={{fontSize:20}}>🪶</div><div style={{fontWeight:700}}>{game.items.revive}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return<div style={{minHeight:'100vh',background:'#000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><button className="btn" onClick={()=>setGame(g=>({...g,screen:"home"}))}>Home</button></div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
