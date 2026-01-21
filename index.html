@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Scripture Quest">
+  <meta name="theme-color" content="#000000">
+  <title>Scripture Quest</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#000}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(251,191,36,.4)}50%{box-shadow:0 0 40px rgba(251,191,36,.7)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes scaleIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .aF{animation:float 3s ease-in-out infinite}.aP{animation:pulse 2s ease-in-out infinite}
+    .aG{animation:glow 2s ease-in-out infinite}.aS{animation:spin 1s linear infinite}
+    .aFI{animation:fadeIn .5s ease-out forwards}.aSI{animation:scaleIn .3s ease-out forwards}
+    .aSH{animation:shimmer 2s linear infinite;background-size:200% 100%}
+    .btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;padding:16px 32px;border-radius:16px;border:none;font-size:18px;cursor:pointer;width:100%}
+    .btn:active{transform:scale(.96)}.btn:disabled{opacity:.4}
+    .btn2{background:rgba(255,255,255,.1);color:#fff;font-weight:600;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);cursor:pointer;width:100%}
+    .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:16px}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useCallback}=React;
+const D={
+  classes:[{id:"prophet",name:"Prophet",icon:"🔥",char:"🧙‍♂️",bonus:"+25% XP OT"},{id:"evangelist",name:"Evangelist",icon:"📖",char:"🧑‍🦱",bonus:"+25% XP Gospels"},{id:"psalmist",name:"Psalmist",icon:"🎵",char:"👨‍🦰",bonus:"+25% XP Psalms"},{id:"apostle",name:"Apostle",icon:"✉️",char:"🧔",bonus:"+25% XP Epistles"}],
+  bible:{"gen-1":{book:"Genesis",ch:1,title:"In The Beginning",verses:["In the beginning God created the heaven and the earth.","And the earth was without form, and void.","And God said, Let there be light: and there was light.","And God saw the light, that it was good.","And God called the light Day, and the darkness Night."],quiz:[{q:"What did God create in the beginning?",opts:["Man","Heaven and earth","Animals","Garden"],a:1},{q:"What did God say to create light?",opts:["Shine","Let there be light","Illuminate","Bring light"],a:1},{q:"What did God call the light?",opts:["Sun","Day","Morning","Bright"],a:1}]},"gen-2":{book:"Genesis",ch:2,title:"Garden of Eden",verses:["Thus the heavens and earth were finished.","On the seventh day God rested.","God blessed the seventh day.","The LORD God formed man of dust.","He breathed into his nostrils the breath of life."],quiz:[{q:"What did God do on day seven?",opts:["Created","Rested","Walked","Spoke"],a:1},{q:"Man was formed from?",opts:["Water","Dust","Light","Clay"],a:1}]},"gen-3":{book:"Genesis",ch:3,title:"The Fall",verses:["The serpent was cunning.","He said to the woman, Has God said you shall not eat?","The woman saw the tree was good for food.","She took the fruit and ate.","Their eyes were opened."],quiz:[{q:"What tempted Eve?",opts:["Lion","Serpent","Eagle","Wolf"],a:1},{q:"What did Eve do with the fruit?",opts:["Threw it","Ate it","Buried it","Ignored"],a:1}]},"exo-1":{book:"Exodus",ch:1,title:"Israel in Egypt",verses:["The children of Israel came into Egypt.","They multiplied greatly.","A new king arose who knew not Joseph.","He afflicted them with burdens."],quiz:[{q:"Where did Israel go?",opts:["Canaan","Egypt","Babylon","Rome"],a:1}]},"exo-14":{book:"Exodus",ch:14,title:"Red Sea",verses:["Moses stretched his hand over the sea.","The LORD divided the sea.","Israel walked on dry ground.","The waters were a wall."],quiz:[{q:"Who parted the sea?",opts:["Aaron","Moses","Joshua","God"],a:1}]}},
+  regions:[{id:"creation",name:"Creation",icon:"🌍",chapters:["gen-1","gen-2","gen-3"],lvl:1},{id:"exodus",name:"Exodus",icon:"🔥",chapters:["exo-1","exo-14"],lvl:5},{id:"kingdom",name:"Kingdom",icon:"👑",chapters:[],lvl:15}],
+  companions:[{id:"ruth",name:"Ruth",rarity:"Rare",emoji:"🌾",bonus:"+10% Gold",fx:{gold:.1}},{id:"samuel",name:"Samuel",rarity:"Rare",emoji:"📢",bonus:"+10% XP",fx:{xp:.1}},{id:"esther",name:"Esther",rarity:"Rare",emoji:"👸",bonus:"+5% All",fx:{xp:.05,gold:.05}},{id:"peter",name:"Peter",rarity:"Epic",emoji:"🪨",bonus:"+15% XP",fx:{xp:.15}},{id:"daniel",name:"Daniel",rarity:"Epic",emoji:"🦁",bonus:"+1 Life",fx:{lives:1}},{id:"moses",name:"Moses",rarity:"Legendary",emoji:"⚡",bonus:"+30% XP +1 Life",fx:{xp:.3,lives:1}},{id:"david",name:"David",rarity:"Legendary",emoji:"👑",bonus:"+25% All",fx:{xp:.25,gold:.25}}],
+  gear:[{id:"staff1",name:"Wooden Staff",rarity:"Common",icon:"🪵",slot:"weapon",fx:{xp:.05},desc:"+5% XP"},{id:"shield1",name:"Bronze Shield",rarity:"Rare",icon:"🛡️",slot:"armor",fx:{lives:1},desc:"+1 Life"},{id:"staff2",name:"Shepherd Rod",rarity:"Rare",icon:"🪝",slot:"weapon",fx:{xp:.15},desc:"+15% XP"},{id:"staff3",name:"Staff of Moses",rarity:"Legendary",icon:"⚡",slot:"weapon",fx:{xp:.35,lives:1},desc:"+35% XP +1 Life"}],
+  shop:[{id:"energy",name:"Energy",icon:"⚡",desc:"Restore energy",price:100,act:"energy"},{id:"ticket",name:"Ticket",icon:"🎟️",desc:"1 summon",price:500,act:"ticket"}],
+  leaders:[{name:"DavidKing",lvl:89,asc:4},{name:"MosesFollower",lvl:76,asc:3},{name:"FaithWarrior",lvl:64,asc:2},{name:"GraceSeeker",lvl:52,asc:1},{name:"TruthBearer",lvl:45,asc:1}],
+  xp:[0,100,250,500,800,1200,1700,2300,3000,4000,5200,6500,8000,10000,12500,15500,19000,23000,28000,34000],
+  rarity:{Common:{bg:"linear-gradient(135deg,#6b7280,#4b5563)",border:"#9ca3af",text:"#d1d5db"},Rare:{bg:"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"#60a5fa",text:"#93c5fd"},Epic:{bg:"linear-gradient(135deg,#8b5cf6,#6d28d9)",border:"#a78bfa",text:"#c4b5fd"},Legendary:{bg:"linear-gradient(135deg,#fbbf24,#d97706)",border:"#fcd34d",text:"#fef3c7"}}
+};
+const save=d=>{try{localStorage.setItem('sq',JSON.stringify(d))}catch(e){}};
+const load=()=>{try{const d=localStorage.getItem('sq');return d?JSON.parse(d):null}catch(e){return null}};
+const getLvl=xp=>{for(let i=D.xp.length-1;i>=0;i--)if(xp>=D.xp[i])return i+1;return 1};
+const getXpProg=xp=>{const l=getLvl(xp),c=xp-(D.xp[l-1]||0),n=(D.xp[l]||99999)-(D.xp[l-1]||0);return{cur:c,need:n,pct:Math.min(c/n*100,100)}};
+
+function App(){
+  const[game,setGame]=useState(()=>load()||{screen:"splash",user:null,tutDone:false,done:[],stars:{},inv:[],comp:[],eq:{weapon:null,armor:null,companion:null},gold:0,tickets:3,energy:5,streak:0,asc:0});
+  const[ui,setUi]=useState({cls:null,name:"",ch:null,region:null,quiz:{i:0,score:0,combo:0,xp:0,picked:null,lives:3,maxC:0},summon:{pulling:false,result:null},gear:null,lvlUp:null,tour:0,showTour:false,tab:"gear"});
+  
+  useEffect(()=>{if(game.user)save(game)},[game]);
+  
+  const getFx=useCallback(()=>{let e={xp:0,gold:0,lives:0};[game.eq.weapon,game.eq.armor,game.eq.companion].forEach(i=>{if(i?.fx)Object.entries(i.fx).forEach(([k,v])=>e[k]=(e[k]||0)+v)});e.xp+=game.asc*.05;return e},[game.eq,game.asc]);
+  const getLives=useCallback(()=>3+(getFx().lives||0),[getFx]);
+  const addXp=useCallback(base=>{const fx=getFx(),total=base+Math.floor(base*fx.xp);setGame(g=>{const oL=getLvl(g.user.xp),nX=g.user.xp+total,nL=getLvl(nX);if(nL>oL)setTimeout(()=>setUi(u=>({...u,lvlUp:{o:oL,n:nL}})),500);return{...g,user:{...g.user,xp:nX}}});return total},[getFx]);
+  const addGold=useCallback(base=>{const fx=getFx(),total=base+Math.floor(base*fx.gold);setGame(g=>({...g,gold:g.gold+total}));return total},[getFx]);
+
+  // SPLASH
+  if(game.screen==="splash")return(
+    <div style={{minHeight:'100vh',background:'#000',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,#1e1b4b,#0f0a1f,#000)'}}/>
+      <div style={{position:'absolute',top:'20%',left:'50%',transform:'translateX(-50%)',width:300,height:300,background:'radial-gradient(circle,rgba(251,191,36,.2),transparent 70%)',borderRadius:'50%'}} className="aP"/>
+      {[...Array(40)].map((_,i)=><div key={i} style={{position:'absolute',width:Math.random()*3+1,height:Math.random()*3+1,background:'#fff',borderRadius:'50%',opacity:Math.random()*.5+.2,left:`${Math.random()*100}%`,top:`${Math.random()*60}%`}} className="aP"/>)}
+      <div style={{position:'relative',zIndex:10,textAlign:'center'}} className="aFI">
+        <div style={{fontSize:90,marginBottom:20}} className="aF">📖</div>
+        <h1 style={{fontSize:48,fontWeight:900,marginBottom:8,background:'linear-gradient(90deg,#fde68a,#fbbf24,#f59e0b,#fbbf24,#fde68a)',backgroundSize:'200% 100%',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}} className="aSH">Scripture Quest</h1>
+        <p style={{color:'rgba(255,255,255,.5)',fontSize:18,marginBottom:50}}>Journey Through The Word</p>
+        <button className="btn aG" style={{width:'auto',padding:'18px 48px'}} onClick={()=>setGame(g=>({...g,screen:"intro"}))}>Begin Your Journey</button>
+      </div>
+    </div>
+  );
+
+  // INTRO
+  if(game.screen==="intro")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div className="aFI" style={{maxWidth:360,textAlign:'center'}}>
+        <div style={{fontSize:60,marginBottom:20}}>⚔️</div>
+        <h2 style={{fontSize:28,fontWeight:700,marginBottom:16}}>Your Quest Awaits</h2>
+        <p style={{color:'rgba(255,255,255,.7)',marginBottom:12}}><span style={{color:'#fbbf24'}}>📖 Read</span> chapters from the Bible</p>
+        <p style={{color:'rgba(255,255,255,.7)',marginBottom:12}}><span style={{color:'#4ade80'}}>✨ Answer</span> quizzes to earn XP</p>
+        <p style={{color:'rgba(255,255,255,.7)',marginBottom:12}}><span style={{color:'#60a5fa'}}>⚔️ Collect</span> gear and companions</p>
+        <p style={{color:'rgba(255,255,255,.7)',marginBottom:32}}><span style={{color:'#f472b6'}}>🏆 Compete</span> in the Hall of Faith</p>
+        <button className="btn" onClick={()=>setGame(g=>({...g,screen:"name"}))}>Continue</button>
+      </div>
+    </div>
+  );
+
+  // NAME
+  if(game.screen==="name")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div className="aFI" style={{maxWidth:360,width:'100%',textAlign:'center'}}>
+        <div style={{fontSize:60,marginBottom:16}}>✨</div>
+        <h2 style={{fontSize:28,fontWeight:700,marginBottom:8}}>What is your name?</h2>
+        <p style={{color:'rgba(255,255,255,.5)',marginBottom:24}}>Choose wisely, disciple</p>
+        <input type="text" value={ui.name} onChange={e=>setUi(u=>({...u,name:e.target.value}))} placeholder="Enter name..." maxLength={15} style={{width:'100%',padding:18,fontSize:20,background:'rgba(255,255,255,.05)',border:'2px solid rgba(255,255,255,.2)',borderRadius:16,color:'#fff',textAlign:'center',outline:'none',marginBottom:24}}/>
+        <button className="btn" disabled={ui.name.trim().length<2} onClick={()=>setGame(g=>({...g,screen:"class"}))}>Continue</button>
+      </div>
+    </div>
+  );
+
+  // CLASS
+  if(game.screen==="class")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',padding:20}}>
+      <div className="aFI" style={{maxWidth:400,margin:'0 auto'}}>
+        <div style={{textAlign:'center',marginBottom:24}}><h2 style={{fontSize:28,fontWeight:700,marginBottom:8}}>Choose Your Path</h2></div>
+        <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:24}}>
+          {D.classes.map(c=>(
+            <button key={c.id} onClick={()=>setUi(u=>({...u,cls:c}))} style={{display:'flex',alignItems:'center',gap:16,padding:16,background:ui.cls?.id===c.id?'rgba(251,191,36,.2)':'rgba(255,255,255,.05)',border:ui.cls?.id===c.id?'2px solid #fbbf24':'2px solid rgba(255,255,255,.1)',borderRadius:16,cursor:'pointer'}}>
+              <div style={{width:56,height:56,borderRadius:12,background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>{c.char}</div>
+              <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:700,fontSize:18}}>{c.name} {c.icon}</div><div style={{color:'#4ade80',fontSize:13}}>{c.bonus}</div></div>
+              {ui.cls?.id===c.id&&<div style={{width:28,height:28,borderRadius:'50%',background:'#fbbf24',display:'flex',alignItems:'center',justifyContent:'center',color:'#000',fontWeight:700}}>✓</div>}
+            </button>
+          ))}
+        </div>
+        <button className="btn" disabled={!ui.cls} onClick={()=>setGame(g=>({...g,screen:"tutStart",user:{name:ui.name.trim(),cls:ui.cls,xp:0}}))}>Begin as {ui.cls?.name||'...'}</button>
+      </div>
+    </div>
+  );
+
+  // TUTORIAL START
+  if(game.screen==="tutStart")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div className="aFI" style={{maxWidth:360,textAlign:'center'}}>
+        <div style={{fontSize:80,marginBottom:20}}>{game.user?.cls?.char}</div>
+        <h2 style={{fontSize:28,fontWeight:700,marginBottom:8}}>Welcome, {game.user?.name}!</h2>
+        <p style={{color:'rgba(255,255,255,.6)',marginBottom:32}}>You are now a <span style={{color:'#fbbf24'}}>{game.user?.cls?.name}</span></p>
+        <div className="card" style={{marginBottom:24,textAlign:'left'}}>
+          <h3 style={{fontWeight:700,marginBottom:12,color:'#fbbf24'}}>📖 Your First Quest</h3>
+          <p style={{color:'rgba(255,255,255,.7)',fontSize:14}}>Read <strong>Genesis 1</strong> and complete the quiz!</p>
+        </div>
+        <button className="btn" onClick={()=>{setUi(u=>({...u,ch:"gen-1"}));setGame(g=>({...g,screen:"read"}))}}>Start Reading 📖</button>
+      </div>
+    </div>
+  );
+
+  // READ
+  if(game.screen==="read"){
+    const ch=D.bible[ui.ch];if(!ch){setGame(g=>({...g,screen:"home"}));return null}
+    const isTut=!game.tutDone;
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1a1a2e,#0f0f1a)',color:'#fff'}}>
+        <header style={{padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(0,0,0,.3)',position:'sticky',top:0,zIndex:10}}>
+          <button onClick={()=>setGame(g=>({...g,screen:game.tutDone?"home":"tutStart"}))} style={{background:'rgba(255,255,255,.1)',border:'none',borderRadius:'50%',width:40,height:40,color:'#fff',fontSize:18,cursor:'pointer'}}>←</button>
+          <div style={{textAlign:'center'}}><div style={{fontWeight:700}}>{ch.book} {ch.ch}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>{ch.title}</div></div>
+          <div style={{width:40}}/>
+        </header>
+        {isTut&&<div style={{background:'linear-gradient(90deg,#fbbf24,#f59e0b)',color:'#000',padding:'10px 16px',textAlign:'center',fontWeight:600,fontSize:14}}>📖 Read carefully! Quiz follows.</div>}
+        <main style={{padding:20}}>
+          <div className="card" style={{background:'rgba(120,53,15,.1)',border:'1px solid rgba(251,191,36,.2)',marginBottom:24}}>
+            {ch.verses.map((v,i)=><p key={i} style={{marginBottom:16,fontSize:18,lineHeight:1.7}}><span style={{display:'inline-flex',width:28,height:28,borderRadius:'50%',background:'rgba(251,191,36,.2)',color:'#fbbf24',fontSize:12,fontWeight:700,alignItems:'center',justifyContent:'center',marginRight:10}}>{i+1}</span>{v}</p>)}
+          </div>
+          <button className="btn" onClick={()=>{setUi(u=>({...u,quiz:{i:0,score:0,combo:0,xp:0,picked:null,lives:getLives(),maxC:0}}));setGame(g=>({...g,screen:"quiz"}))}}>Start Quiz ✨</button>
+        </main>
+      </div>
+    );
+  }
+
+  // QUIZ
+  if(game.screen==="quiz"){
+    const ch=D.bible[ui.ch],qs=ui.quiz,q=ch?.quiz[qs.i],isTut=!game.tutDone;
+    if(!q||qs.i>=ch.quiz.length||qs.lives<=0){
+      const won=qs.lives>0,stars=won?(qs.score===ch.quiz.length?3:qs.score>=1?2:1):0,baseXp=qs.xp+(won?50:10),baseGold=won?25:5;
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+          <div className="aSI" style={{textAlign:'center',maxWidth:340}}>
+            <div style={{fontSize:72,marginBottom:16}}>{won?"🎉":"💔"}</div>
+            <h2 style={{fontSize:28,fontWeight:700,marginBottom:8}}>{won?"Complete!":"Defeated!"}</h2>
+            {won&&<div style={{marginBottom:16}}>{[1,2,3].map(s=><span key={s} style={{fontSize:32,color:s<=stars?'#fbbf24':'rgba(255,255,255,.2)'}}>⭐</span>)}</div>}
+            <div className="card" style={{marginBottom:24}}>
+              <div style={{display:'flex',justifyContent:'space-around'}}>
+                <div style={{textAlign:'center'}}><div style={{color:'#fbbf24',fontWeight:700,fontSize:24}}>+{baseXp}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>XP</div></div>
+                <div style={{textAlign:'center'}}><div style={{color:'#fcd34d',fontWeight:700,fontSize:24}}>+{baseGold}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>Gold</div></div>
+              </div>
+            </div>
+            {!won&&<button className="btn2" style={{marginBottom:16}} onClick={()=>{if(game.energy>0){setGame(g=>({...g,energy:g.energy-1,screen:"read"}));setUi(u=>({...u,quiz:{i:0,score:0,combo:0,xp:0,picked:null,lives:getLives(),maxC:0}}))}}}>🔄 Retry (1⚡)</button>}
+            <button className="btn" onClick={()=>{
+              addXp(baseXp);addGold(baseGold);
+              setGame(g=>({...g,done:won?[...new Set([...g.done,ui.ch])]:g.done,stars:won?{...g.stars,[ui.ch]:Math.max(g.stars[ui.ch]||0,stars)}:g.stars}));
+              if(isTut&&won){const gear=D.gear[0];setUi(u=>({...u,gear}));setGame(g=>({...g,screen:"tutGear"}))}
+              else if(won&&Math.random()<.3){const gear=D.gear[Math.floor(Math.random()*D.gear.length)];setUi(u=>({...u,gear}));setGame(g=>({...g,screen:"gearDrop"}))}
+              else setGame(g=>({...g,screen:"home"}));
+            }}>{won?"Claim":"Continue"}</button>
+          </div>
+        </div>
+      );
+    }
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1a1a2e,#0f0f1a)',color:'#fff',padding:20}}>
+        <div style={{maxWidth:500,margin:'0 auto'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <div>{[...Array(qs.lives)].map((_,i)=><span key={i}>❤️</span>)}{[...Array(getLives()-qs.lives)].map((_,i)=><span key={i} style={{opacity:.3}}>🖤</span>)}</div>
+            <div style={{display:'flex',gap:8}}>{qs.combo>0&&<div style={{background:'rgba(249,115,22,.3)',padding:'4px 10px',borderRadius:20,color:'#fb923c',fontWeight:700,fontSize:14}}>{qs.combo}x🔥</div>}<div style={{background:'rgba(251,191,36,.2)',padding:'4px 10px',borderRadius:20,color:'#fbbf24',fontWeight:700,fontSize:14}}>+{qs.xp}</div></div>
+          </div>
+          <div style={{height:8,background:'rgba(255,255,255,.1)',borderRadius:10,marginBottom:24,overflow:'hidden'}}><div style={{height:'100%',width:`${((qs.i+1)/ch.quiz.length)*100}%`,background:'#f59e0b',borderRadius:10}}/></div>
+          <div style={{textAlign:'center',marginBottom:32}}><div style={{color:'rgba(255,255,255,.5)',fontSize:14,marginBottom:8}}>Q {qs.i+1}/{ch.quiz.length}</div><h2 style={{fontSize:22,fontWeight:600}}>{q.q}</h2></div>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {q.opts.map((opt,i)=>{
+              const pk=qs.picked!==null,cor=i===q.a,mine=i===qs.picked;
+              let bg='rgba(255,255,255,.05)',bor='rgba(255,255,255,.15)';
+              if(pk){if(cor){bg='rgba(34,197,94,.2)';bor='#4ade80'}else if(mine){bg='rgba(239,68,68,.2)';bor='#f87171'}}
+              return(
+                <button key={i} disabled={pk} onClick={()=>{const ok=i===q.a,nc=ok?qs.combo+1:0,xpG=ok?(nc>=2?40:25):0;setUi(u=>({...u,quiz:{...qs,picked:i,combo:nc,maxC:Math.max(qs.maxC,nc),score:qs.score+(ok?1:0),xp:qs.xp+xpG,lives:ok?qs.lives:qs.lives-1}}));setTimeout(()=>setUi(u=>({...u,quiz:{...u.quiz,picked:null,i:u.quiz.i+1}})),1000)}} style={{padding:18,background:bg,border:`2px solid ${bor}`,borderRadius:14,color:'#fff',fontSize:16,textAlign:'left',cursor:pk?'default':'pointer',opacity:pk&&!cor&&!mine?.4:1}}>
+                  {String.fromCharCode(65+i)}. {opt}{pk&&cor&&<span style={{float:'right'}}>✓</span>}{pk&&mine&&!cor&&<span style={{float:'right'}}>✗</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TUTORIAL GEAR
+  if(game.screen==="tutGear"){
+    const gear=ui.gear||D.gear[0],r=D.rarity[gear.rarity];
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="aSI" style={{textAlign:'center',maxWidth:320}}>
+          <div style={{color:'#fbbf24',fontSize:12,fontWeight:700,letterSpacing:2,marginBottom:16}}>⚔️ GEAR DROP! ⚔️</div>
+          <div style={{width:120,height:120,borderRadius:24,background:r.bg,border:`4px solid ${r.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:60,margin:'0 auto 20px'}} className="aG">{gear.icon}</div>
+          <h2 style={{fontSize:24,fontWeight:700,marginBottom:4}}>{gear.name}</h2>
+          <div style={{color:r.text,fontSize:14,marginBottom:8}}>{gear.rarity}</div>
+          <div style={{color:'#4ade80',fontSize:16,marginBottom:24}}>{gear.desc}</div>
+          <div className="card" style={{marginBottom:24,textAlign:'left'}}><p style={{color:'rgba(255,255,255,.7)',fontSize:14}}>💡 Gear gives permanent bonuses! Equip from inventory.</p></div>
+          <button className="btn" onClick={()=>setGame(g=>({...g,inv:[...g.inv,gear],eq:{...g.eq,[gear.slot]:gear},screen:"tutComp"}))}>Equip & Continue</button>
+        </div>
+      </div>
+    );
+  }
+
+  // TUTORIAL COMPANION
+  if(game.screen==="tutComp"){
+    if(ui.summon.result){const c=ui.summon.result,r=D.rarity[c.rarity];return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="aSI" style={{textAlign:'center'}}>
+          <div style={{width:120,height:120,borderRadius:'50%',background:r.bg,border:`4px solid ${r.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:60,margin:'0 auto 20px'}}>{c.emoji}</div>
+          <div style={{color:r.text,fontSize:12,fontWeight:700,letterSpacing:2,marginBottom:8}}>★ {c.rarity.toUpperCase()} ★</div>
+          <h2 style={{fontSize:28,fontWeight:700,marginBottom:4}}>{c.name}</h2>
+          <p style={{color:'#4ade80',marginBottom:24}}>{c.bonus}</p>
+          <button className="btn" onClick={()=>{setGame(g=>({...g,comp:[...g.comp,ui.summon.result],eq:{...g.eq,companion:ui.summon.result},tutDone:true,screen:"home"}));setUi(u=>({...u,summon:{pulling:false,result:null},showTour:true,tour:0}))}}>Continue</button>
+        </div>
+      </div>
+    )}
+    if(ui.summon.pulling)return<div style={{minHeight:'100vh',background:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:80,height:80,borderRadius:'50%',border:'4px solid #8b5cf6',borderTopColor:'transparent'}} className="aS"/></div>;
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="aFI" style={{textAlign:'center',maxWidth:320}}>
+          <div style={{color:'#f472b6',fontSize:12,fontWeight:700,letterSpacing:2,marginBottom:16}}>🎁 FREE SUMMON! 🎁</div>
+          <div style={{fontSize:80,marginBottom:20}} className="aF">🎁</div>
+          <h2 style={{fontSize:24,fontWeight:700,marginBottom:8}}>First Companion!</h2>
+          <p style={{color:'rgba(255,255,255,.6)',marginBottom:24}}>Companions give passive bonuses</p>
+          <button className="btn" style={{background:'linear-gradient(135deg,#ec4899,#8b5cf6)'}} onClick={()=>{setUi(u=>({...u,summon:{pulling:true,result:null}}));setTimeout(()=>{const pool=D.companions.filter(c=>c.rarity==="Rare");setUi(u=>({...u,summon:{pulling:false,result:pool[Math.floor(Math.random()*pool.length)]}}))},1500)}}>✨ Open Gift</button>
+        </div>
+      </div>
+    );
+  }
+
+  // GEAR DROP
+  if(game.screen==="gearDrop"){
+    const gear=ui.gear;if(!gear){setGame(g=>({...g,screen:"home"}));return null}
+    const r=D.rarity[gear.rarity];
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="aSI" style={{textAlign:'center',maxWidth:320}}>
+          <div style={{color:'#fbbf24',fontSize:12,fontWeight:700,letterSpacing:2,marginBottom:16}}>⚔️ GEAR DROP! ⚔️</div>
+          <div style={{width:120,height:120,borderRadius:24,background:r.bg,border:`4px solid ${r.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:60,margin:'0 auto 20px'}}>{gear.icon}</div>
+          <h2 style={{fontSize:24,fontWeight:700,marginBottom:4}}>{gear.name}</h2>
+          <div style={{color:r.text,fontSize:14,marginBottom:8}}>{gear.rarity}</div>
+          <div style={{color:'#4ade80',fontSize:16,marginBottom:32}}>{gear.desc}</div>
+          <button className="btn" onClick={()=>{setGame(g=>({...g,inv:[...g.inv,gear],screen:"home"}));setUi(u=>({...u,gear:null}))}}>Collect</button>
+        </div>
+      </div>
+    );
+  }
+
+  // HOME
+  if(game.screen==="home"){
+    const u=game.user,lvl=getLvl(u?.xp||0),prog=getXpProg(u?.xp||0),fx=getFx(),rank=D.leaders.filter(p=>p.lvl>lvl).length+1+100;
+    const next=["gen-1","gen-2","gen-3","exo-1","exo-14"].find(c=>!game.done.includes(c))||"gen-1",nextCh=D.bible[next];
+    const tours=["This is YOU! Your character and bonuses.","Tap here to continue reading!","Explore all game modes!","Check the Hall of Faith!"];
+    return(
+      <div style={{minHeight:'100vh',background:'#000',color:'#fff',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,#1e1b4b,#0f172a 50%,#000)'}}/>
+        <div style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:3,height:'30%',background:'linear-gradient(to bottom,rgba(251,191,36,.5),transparent)'}}/>
+        {[...Array(50)].map((_,i)=><div key={i} style={{position:'absolute',width:Math.random()*2+1,height:Math.random()*2+1,background:'#fff',borderRadius:'50%',opacity:Math.random()*.4+.1,left:`${Math.random()*100}%`,top:`${Math.random()*50}%`}}/>)}
+        
+        {ui.showTour&&ui.tour<tours.length&&<div style={{position:'fixed',inset:0,zIndex:100}} onClick={()=>ui.tour<tours.length-1?setUi(u=>({...u,tour:u.tour+1})):setUi(u=>({...u,showTour:false}))}><div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.8)'}}/><div style={{position:'absolute',left:20,right:20,top:ui.tour===0?200:ui.tour===1?380:500,background:'linear-gradient(135deg,#f59e0b,#d97706)',color:'#000',padding:20,borderRadius:16,fontWeight:600,textAlign:'center',zIndex:101}}>{tours[ui.tour]}<div style={{marginTop:12,fontSize:14,opacity:.7}}>Tap ({ui.tour+1}/{tours.length})</div></div></div>}
+        {ui.lvlUp&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.95)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}><div className="aSI" style={{textAlign:'center'}}><div style={{fontSize:80,marginBottom:16}}>⬆️</div><h2 style={{fontSize:42,fontWeight:900,color:'#fbbf24',marginBottom:8}}>LEVEL UP!</h2><p style={{fontSize:24,marginBottom:24}}>Level {ui.lvlUp.n}</p><button className="btn" style={{width:'auto',padding:'14px 40px'}} onClick={()=>setUi(u=>({...u,lvlUp:null}))}>Awesome!</button></div></div>}
+        
+        <div style={{position:'relative',zIndex:10}}>
+          <header style={{padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{display:'flex',gap:8}}>
+              <div style={{background:'rgba(249,115,22,.3)',border:'1px solid rgba(249,115,22,.5)',padding:'6px 12px',borderRadius:20,display:'flex',alignItems:'center',gap:6}}><span>🔥</span><span style={{fontWeight:700,color:'#fdba74'}}>{game.streak}</span></div>
+              <div style={{background:'rgba(251,191,36,.3)',border:'1px solid rgba(251,191,36,.5)',padding:'6px 12px',borderRadius:20,display:'flex',alignItems:'center',gap:6}}><span>🪙</span><span style={{fontWeight:700,color:'#fcd34d'}}>{game.gold}</span></div>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <div style={{background:'rgba(59,130,246,.3)',border:'1px solid rgba(59,130,246,.5)',padding:'6px 12px',borderRadius:20,display:'flex',alignItems:'center',gap:6}}><span>⚡</span><span style={{fontWeight:700,color:'#93c5fd'}}>{game.energy}/5</span></div>
+              <div style={{background:'rgba(236,72,153,.3)',border:'1px solid rgba(236,72,153,.5)',padding:'6px 12px',borderRadius:20,display:'flex',alignItems:'center',gap:6}}><span>🎟️</span><span style={{fontWeight:700,color:'#f9a8d4'}}>{game.tickets}</span></div>
+            </div>
+          </header>
+
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'16px 0'}}>
+            {game.asc>0&&<div style={{color:'#fbbf24',fontSize:18,marginBottom:8}}>{'⭐'.repeat(Math.min(game.asc,5))}</div>}
+            <div style={{position:'relative',marginBottom:12}}>
+              <div style={{position:'absolute',inset:-20,background:'rgba(251,191,36,.2)',borderRadius:'50%',filter:'blur(30px)'}}/>
+              <div style={{position:'relative',width:110,height:110,borderRadius:'50%',border:'4px solid rgba(251,191,36,.5)',background:'linear-gradient(135deg,#1e293b,#0f172a)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <span style={{fontSize:60}}>{u?.cls?.char}</span>
+                {game.eq.weapon&&<div style={{position:'absolute',right:-8,top:8,fontSize:24}}>{game.eq.weapon.icon}</div>}
+                {game.eq.companion&&<div style={{position:'absolute',left:-12,bottom:8,fontSize:28}}>{game.eq.companion.emoji}</div>}
+              </div>
+              <div style={{position:'absolute',bottom:-8,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#f59e0b,#d97706)',color:'#000',fontWeight:900,fontSize:13,padding:'4px 16px',borderRadius:20}}>Lv.{lvl}</div>
+            </div>
+            <h2 style={{fontSize:22,fontWeight:700,marginTop:8}}>{u?.name}</h2>
+            <div style={{color:'#9ca3af',fontSize:14}}>Newcomer</div>
+            <div style={{color:'rgba(255,255,255,.4)',fontSize:12,marginTop:4}}>#{rank} Global</div>
+            <div style={{width:200,marginTop:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'rgba(255,255,255,.5)',marginBottom:4}}><span>XP</span><span>{prog.cur}/{prog.need}</span></div>
+              <div style={{height:8,background:'rgba(0,0,0,.5)',borderRadius:10,overflow:'hidden',border:'1px solid rgba(255,255,255,.1)'}}><div style={{height:'100%',width:`${prog.pct}%`,background:'linear-gradient(90deg,#f59e0b,#fbbf24)',borderRadius:10}}/></div>
+            </div>
+            {(fx.xp>0||fx.lives>0||fx.gold>0)&&<div style={{display:'flex',gap:8,marginTop:12}}>{fx.xp>0&&<span style={{background:'rgba(34,197,94,.2)',color:'#4ade80',padding:'3px 10px',borderRadius:6,fontSize:12}}>+{Math.round(fx.xp*100)}%XP</span>}{fx.lives>0&&<span style={{background:'rgba(239,68,68,.2)',color:'#f87171',padding:'3px 10px',borderRadius:6,fontSize:12}}>+{fx.lives}❤️</span>}{fx.gold>0&&<span style={{background:'rgba(251,191,36,.2)',color:'#fbbf24',padding:'3px 10px',borderRadius:6,fontSize:12}}>+{Math.round(fx.gold*100)}%Gold</span>}</div>}
+          </div>
+
+          <div style={{padding:'0 16px',marginBottom:16}}>
+            <button onClick={()=>{setUi(u=>({...u,ch:next}));setGame(g=>({...g,screen:"read"}))}} style={{width:'100%',background:'linear-gradient(135deg,rgba(146,64,14,.6),rgba(120,53,15,.6))',border:'2px solid rgba(251,191,36,.5)',borderRadius:20,padding:18,textAlign:'left',cursor:'pointer'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}><span style={{fontSize:20}}>📖</span><span style={{color:'rgba(251,191,36,.8)',fontSize:12,fontWeight:700,letterSpacing:1}}>CONTINUE JOURNEY</span></div>
+              <div style={{fontSize:20,fontWeight:700}}>{nextCh?.book} {nextCh?.ch}</div>
+              <div style={{color:'rgba(255,255,255,.5)',fontSize:14}}>{nextCh?.title}</div>
+            </button>
+          </div>
+
+          <div style={{padding:'0 16px',marginBottom:16}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:10}}>
+              {[{icon:"🗺️",name:"Map",scr:"campaign"},{icon:"🗼",name:"Tower",scr:"tower",lock:lvl<10},{icon:"⚔️",name:"Raid",scr:"raid",lock:lvl<15},{icon:"✨",name:"Summon",scr:"summon"},{icon:"🏪",name:"Shop",scr:"shop"}].map(b=>(
+                <button key={b.name} onClick={()=>!b.lock&&setGame(g=>({...g,screen:b.scr}))} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'10px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:2,cursor:b.lock?'not-allowed':'pointer',opacity:b.lock?.4:1}}>
+                  <span style={{fontSize:22}}>{b.lock?"🔒":b.icon}</span><span style={{fontSize:10,color:'rgba(255,255,255,.6)'}}>{b.name}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
+              <button onClick={()=>setGame(g=>({...g,screen:"inventory"}))} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:12,display:'flex',alignItems:'center',justifyContent:'center',gap:8,cursor:'pointer'}}><span>🎒</span><span style={{fontSize:14}}>Inventory</span></button>
+              <button onClick={()=>setGame(g=>({...g,screen:"hall"}))} style={{background:'linear-gradient(135deg,rgba(139,92,246,.2),rgba(236,72,153,.2))',border:'1px solid rgba(139,92,246,.3)',borderRadius:12,padding:12,display:'flex',alignItems:'center',justifyContent:'center',gap:8,cursor:'pointer'}}><span>👑</span><span style={{fontSize:14}}>Hall of Faith</span></button>
+            </div>
+          </div>
+
+          <div style={{padding:'0 16px',marginBottom:16}}>
+            <div className="card" style={{background:'linear-gradient(135deg,rgba(88,28,135,.3),rgba(49,46,129,.3))',border:'1px solid rgba(139,92,246,.3)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{color:'#c4b5fd',fontSize:12,fontWeight:700}}>👑 HALL OF FAITH</span><button onClick={()=>setGame(g=>({...g,screen:"hall"}))} style={{background:'none',border:'none',color:'#a78bfa',fontSize:12,cursor:'pointer'}}>View →</button></div>
+              {D.leaders.slice(0,3).map((p,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 0',fontSize:14}}><span style={{width:20}}>{i===0?"🥇":i===1?"🥈":"🥉"}</span><span style={{flex:1}}>{p.name}</span><span style={{color:'#fbbf24'}}>{'⭐'.repeat(Math.min(p.asc,3))}</span><span style={{color:'rgba(255,255,255,.5)',fontSize:12}}>Lv.{p.lvl}</span></div>)}
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'4px 0',fontSize:14,borderTop:'1px solid rgba(255,255,255,.1)',marginTop:6,paddingTop:8}}><span style={{width:20,fontSize:10}}>#{rank}</span><span style={{flex:1,color:'#4ade80'}}>{u?.name}</span><span style={{color:'rgba(255,255,255,.5)',fontSize:12}}>Lv.{lvl}</span></div>
+            </div>
+          </div>
+
+          <div style={{padding:'0 16px',paddingBottom:24}}>
+            <button style={{width:'100%',background:'linear-gradient(135deg,rgba(234,88,12,.4),rgba(220,38,38,.4))',border:'1px solid rgba(249,115,22,.5)',borderRadius:14,padding:14,display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}><span style={{fontSize:32}}>🔥</span><div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:700}}>The Exodus Event</div><div style={{color:'rgba(255,255,255,.5)',fontSize:12}}>Limited • 6d 23h</div></div><span style={{color:'rgba(255,255,255,.4)',fontSize:20}}>→</span></button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // CAMPAIGN
+  if(game.screen==="campaign"){
+    const lvl=getLvl(game.user?.xp||0);
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(255,255,255,.1)'}}><button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button><div style={{flex:1,fontWeight:700,fontSize:18}}>Campaign</div><div style={{color:'#fbbf24'}}>⭐{Object.values(game.stars).reduce((a,b)=>a+b,0)}</div></header>
+        <div style={{padding:16}}>
+          {D.regions.map(r=>{const ok=lvl>=r.lvl,stars=r.chapters.reduce((s,c)=>s+(game.stars[c]||0),0),max=r.chapters.length*3;
+            return(<button key={r.id} disabled={!ok} onClick={()=>ok&&setUi(u=>({...u,region:r}))} style={{width:'100%',padding:16,marginBottom:12,background:ok?'rgba(251,191,36,.1)':'rgba(255,255,255,.03)',border:ok?'2px solid rgba(251,191,36,.4)':'1px solid rgba(255,255,255,.1)',borderRadius:16,display:'flex',alignItems:'center',gap:16,cursor:ok?'pointer':'not-allowed',opacity:ok?1:.5}}>
+              <div style={{width:56,height:56,borderRadius:14,background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{ok?r.icon:"🔒"}</div>
+              <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:700,fontSize:17}}>{r.name}</div>{ok&&r.chapters.length>0&&<div style={{color:'#fbbf24',fontSize:13}}>⭐{stars}/{max}</div>}{!ok&&<div style={{color:'rgba(251,191,36,.6)',fontSize:13}}>Lv.{r.lvl}</div>}</div>
+            </button>);
+          })}
+        </div>
+        {ui.region&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:50,display:'flex',alignItems:'flex-end'}} onClick={()=>setUi(u=>({...u,region:null}))}>
+          <div style={{background:'#1e293b',borderRadius:'24px 24px 0 0',padding:24,width:'100%',maxHeight:'70vh',overflow:'auto'}} onClick={e=>e.stopPropagation()}>
+            <h3 style={{fontSize:22,fontWeight:700,marginBottom:20}}>{ui.region.name}</h3>
+            {ui.region.chapters.length===0?<p style={{textAlign:'center',color:'rgba(255,255,255,.5)',padding:'40px 0'}}>Coming soon!</p>:
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {ui.region.chapters.map(cId=>{const ch=D.bible[cId],done=game.done.includes(cId),stars=game.stars[cId]||0;
+                  return(<button key={cId} onClick={()=>{setUi(u=>({...u,ch:cId,region:null}));setGame(g=>({...g,screen:"read"}))}} style={{padding:16,borderRadius:12,display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer',background:done?'rgba(34,197,94,.1)':'rgba(255,255,255,.05)',border:done?'1px solid rgba(34,197,94,.3)':'1px solid rgba(255,255,255,.1)'}}>
+                    <div style={{textAlign:'left'}}><div style={{fontWeight:600}}>{ch.book} {ch.ch}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>{ch.title}</div></div>
+                    <div>{[1,2,3].map(s=><span key={s} style={{color:s<=stars?'#fbbf24':'rgba(255,255,255,.2)'}}>⭐</span>)}</div>
+                  </button>);
+                })}
+              </div>
+            }
+            <button className="btn2" style={{marginTop:20}} onClick={()=>setUi(u=>({...u,region:null}))}>Close</button>
+          </div>
+        </div>}
+      </div>
+    );
+  }
+
+  // INVENTORY
+  if(game.screen==="inventory"){
+    const fx=getFx();
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(255,255,255,.1)'}}><button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button><div style={{fontWeight:700,fontSize:18}}>Inventory</div></header>
+        {(fx.xp>0||fx.lives>0||fx.gold>0)&&<div style={{padding:'12px 16px',display:'flex',gap:8}}>{fx.xp>0&&<span style={{background:'rgba(34,197,94,.2)',color:'#4ade80',padding:'4px 12px',borderRadius:8,fontSize:13}}>+{Math.round(fx.xp*100)}%XP</span>}{fx.lives>0&&<span style={{background:'rgba(239,68,68,.2)',color:'#f87171',padding:'4px 12px',borderRadius:8,fontSize:13}}>+{fx.lives}❤️</span>}{fx.gold>0&&<span style={{background:'rgba(251,191,36,.2)',color:'#fbbf24',padding:'4px 12px',borderRadius:8,fontSize:13}}>+{Math.round(fx.gold*100)}%Gold</span>}</div>}
+        <div style={{padding:'0 16px',display:'flex',gap:8,marginBottom:16}}>
+          <button onClick={()=>setUi(u=>({...u,tab:"gear"}))} style={{flex:1,padding:12,borderRadius:12,fontWeight:600,background:ui.tab==="gear"?'#f59e0b':'rgba(255,255,255,.1)',color:ui.tab==="gear"?'#000':'#fff',border:'none',cursor:'pointer'}}>⚔️Gear</button>
+          <button onClick={()=>setUi(u=>({...u,tab:"comp"}))} style={{flex:1,padding:12,borderRadius:12,fontWeight:600,background:ui.tab==="comp"?'#f59e0b':'rgba(255,255,255,.1)',color:ui.tab==="comp"?'#000':'#fff',border:'none',cursor:'pointer'}}>👥Companions</button>
+        </div>
+        <div style={{padding:'0 16px'}}>
+          {ui.tab==="gear"&&<>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
+              {["weapon","armor"].map(slot=>{const item=game.eq[slot],r=item?D.rarity[item.rarity]:null;
+                return(<div key={slot} style={{aspectRatio:'1',borderRadius:14,border:item?`3px solid ${r.border}`:'2px dashed rgba(255,255,255,.2)',background:item?r.bg:'rgba(255,255,255,.03)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
+                  {item?<><span style={{fontSize:32}}>{item.icon}</span><span style={{fontSize:10}}>{item.name}</span></>:<span style={{fontSize:24,opacity:.3}}>{slot==="weapon"?"⚔️":"🛡️"}</span>}
+                </div>);
+              })}
+            </div>
+            {game.inv.length===0?<p style={{textAlign:'center',color:'rgba(255,255,255,.4)',padding:'40px 0'}}>No gear yet</p>:
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+                {game.inv.map((item,i)=>{const r=D.rarity[item.rarity],eq=game.eq[item.slot]?.id===item.id;
+                  return(<button key={i} onClick={()=>setGame(g=>({...g,eq:{...g.eq,[item.slot]:eq?null:item}}))} style={{aspectRatio:'1',borderRadius:12,background:r.bg,border:eq?'3px solid #4ade80':'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',position:'relative'}}>
+                    <span style={{fontSize:28}}>{item.icon}</span>{eq&&<div style={{position:'absolute',top:4,right:4,width:16,height:16,borderRadius:'50%',background:'#4ade80',fontSize:10,display:'flex',alignItems:'center',justifyContent:'center'}}>✓</div>}
+                  </button>);
+                })}
+              </div>
+            }
+          </>}
+          {ui.tab==="comp"&&<>
+            {game.eq.companion&&<div className="card" style={{marginBottom:16,display:'flex',alignItems:'center',gap:12,background:'rgba(34,197,94,.1)',border:'1px solid rgba(34,197,94,.3)'}}>
+              <div style={{width:50,height:50,borderRadius:'50%',background:D.rarity[game.eq.companion.rarity].bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{game.eq.companion.emoji}</div>
+              <div style={{flex:1}}><div style={{fontWeight:700}}>{game.eq.companion.name}</div><div style={{color:'#4ade80',fontSize:13}}>{game.eq.companion.bonus}</div></div>
+              <span style={{color:'#4ade80'}}>Active</span>
+            </div>}
+            {game.comp.length===0?<p style={{textAlign:'center',color:'rgba(255,255,255,.4)',padding:'40px 0'}}>No companions</p>:
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {game.comp.map((c,i)=>{const r=D.rarity[c.rarity],eq=game.eq.companion?.id===c.id;
+                  return(<button key={i} onClick={()=>setGame(g=>({...g,eq:{...g.eq,companion:eq?null:c}}))} style={{padding:14,borderRadius:12,display:'flex',alignItems:'center',gap:12,cursor:'pointer',background:eq?'rgba(34,197,94,.15)':'rgba(255,255,255,.05)',border:eq?'2px solid rgba(34,197,94,.5)':'1px solid rgba(255,255,255,.1)'}}>
+                    <div style={{width:44,height:44,borderRadius:'50%',background:r.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>{c.emoji}</div>
+                    <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:600}}>{c.name}</div><div style={{color:'#4ade80',fontSize:13}}>{c.bonus}</div></div>
+                    {eq&&<span style={{color:'#4ade80',fontSize:20}}>✓</span>}
+                  </button>);
+                })}
+              </div>
+            }
+          </>}
+        </div>
+      </div>
+    );
+  }
+
+  // SUMMON
+  if(game.screen==="summon"){
+    if(ui.summon.result){const c=ui.summon.result,r=D.rarity[c.rarity];return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="aSI" style={{textAlign:'center'}}>
+          <div style={{width:120,height:120,borderRadius:'50%',background:r.bg,border:`4px solid ${r.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:60,margin:'0 auto 20px'}}>{c.emoji}</div>
+          <div style={{color:r.text,fontSize:12,fontWeight:700,letterSpacing:2,marginBottom:8}}>★{c.rarity.toUpperCase()}★</div>
+          <h2 style={{fontSize:28,fontWeight:700,marginBottom:4}}>{c.name}</h2>
+          <p style={{color:'#4ade80',marginBottom:24}}>{c.bonus}</p>
+          <button className="btn" onClick={()=>{setGame(g=>({...g,comp:[...g.comp,ui.summon.result]}));setUi(u=>({...u,summon:{pulling:false,result:null}}))}}>Continue</button>
+        </div>
+      </div>
+    )}
+    if(ui.summon.pulling)return<div style={{minHeight:'100vh',background:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:80,height:80,borderRadius:'50%',border:'4px solid #8b5cf6',borderTopColor:'transparent'}} className="aS"/></div>;
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',justifyContent:'space-between'}}><button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button><div style={{fontWeight:700,fontSize:18}}>Summon</div><div style={{background:'rgba(236,72,153,.2)',padding:'6px 12px',borderRadius:20}}>🎟️{game.tickets}</div></header>
+        <div style={{padding:32,display:'flex',flexDirection:'column',alignItems:'center'}}>
+          <div style={{position:'relative',width:140,height:140,marginBottom:40}}><div style={{position:'absolute',inset:0,borderRadius:'50%',border:'2px solid rgba(139,92,246,.3)'}} className="aS"/><div style={{position:'absolute',inset:16,borderRadius:'50%',background:'rgba(139,92,246,.2)',filter:'blur(15px)'}}/><div style={{position:'absolute',inset:28,borderRadius:'50%',background:'linear-gradient(135deg,#581c87,#7c3aed)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:48}}>✨</div></div>
+          <button className="btn" disabled={game.tickets<1} style={{background:'linear-gradient(135deg,#ec4899,#8b5cf6)',width:'auto',padding:'18px 48px'}} onClick={()=>{setUi(u=>({...u,summon:{pulling:true,result:null}}));setTimeout(()=>{const roll=Math.random(),pool=roll<.03?D.companions.filter(c=>c.rarity==="Legendary"):roll<.15?D.companions.filter(c=>c.rarity==="Epic"):D.companions.filter(c=>c.rarity==="Rare");setGame(g=>({...g,tickets:g.tickets-1}));setUi(u=>({...u,summon:{pulling:false,result:pool[Math.floor(Math.random()*pool.length)]}}))},1500)}}>Summon×1</button>
+          <div style={{display:'flex',gap:24,marginTop:32}}><div style={{textAlign:'center'}}><div style={{color:'#fbbf24',fontWeight:700}}>3%</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Legendary</div></div><div style={{textAlign:'center'}}><div style={{color:'#a78bfa',fontWeight:700}}>12%</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Epic</div></div><div style={{textAlign:'center'}}><div style={{color:'#60a5fa',fontWeight:700}}>85%</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Rare</div></div></div>
+        </div>
+      </div>
+    );
+  }
+
+  // SHOP
+  if(game.screen==="shop")return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+      <header style={{padding:16,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,.1)'}}><button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button><div style={{fontWeight:700,fontSize:18}}>Shop</div><div style={{background:'rgba(251,191,36,.2)',padding:'6px 12px',borderRadius:20,color:'#fbbf24'}}>🪙{game.gold}</div></header>
+      <div style={{padding:16}}>
+        {D.shop.map(item=>{const ok=game.gold>=item.price;return(
+          <button key={item.id} disabled={!ok} onClick={()=>{if(!ok)return;let up={gold:game.gold-item.price};if(item.act==="energy")up.energy=5;if(item.act==="ticket")up.tickets=game.tickets+1;setGame(g=>({...g,...up}))}} style={{width:'100%',padding:16,marginBottom:12,borderRadius:14,display:'flex',alignItems:'center',gap:16,cursor:ok?'pointer':'not-allowed',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',opacity:ok?1:.5}}>
+            <div style={{width:56,height:56,borderRadius:12,background:'linear-gradient(135deg,rgba(251,191,36,.2),rgba(249,115,22,.2))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{item.icon}</div>
+            <div style={{flex:1,textAlign:'left'}}><div style={{fontWeight:700}}>{item.name}</div><div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>{item.desc}</div></div>
+            <div style={{color:'#fbbf24',fontWeight:700}}>🪙{item.price}</div>
+          </button>
+        )})}
+      </div>
+    </div>
+  );
+
+  // HALL
+  if(game.screen==="hall"){
+    const lvl=getLvl(game.user?.xp||0),rank=D.leaders.filter(p=>p.lvl>lvl).length+1+100;
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#3b0764,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16,display:'flex',alignItems:'center',gap:12}}><button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button><div><div style={{fontWeight:700,fontSize:20}}>Hall of Faith</div><div style={{color:'#c4b5fd',fontSize:12}}>The greatest disciples</div></div></header>
+        <div style={{padding:16}}>
+          {D.leaders.map((p,i)=>(
+            <div key={i} className="card" style={{marginBottom:10,display:'flex',alignItems:'center',gap:12,background:i<3?'linear-gradient(135deg,rgba(251,191,36,.15),rgba(249,115,22,.15))':'rgba(255,255,255,.05)',border:i<3?'1px solid rgba(251,191,36,.3)':'1px solid rgba(255,255,255,.1)'}}>
+              <div style={{width:32,textAlign:'center',fontSize:i<3?20:14}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}</div>
+              <div style={{width:48,height:48,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#3b82f6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,border:'2px solid rgba(251,191,36,.5)'}}>🧙‍♂️</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,display:'flex',alignItems:'center',gap:8}}>{p.name}<span style={{color:'#fbbf24',fontSize:14}}>{'⭐'.repeat(Math.min(p.asc,3))}</span></div></div>
+              <div style={{fontWeight:700,color:'#fbbf24'}}>Lv.{p.lvl}</div>
+            </div>
+          ))}
+          <div className="card" style={{marginTop:20,display:'flex',alignItems:'center',gap:12,background:'linear-gradient(135deg,rgba(34,197,94,.15),rgba(16,185,129,.15))',border:'2px solid rgba(34,197,94,.4)'}}>
+            <div style={{width:32,textAlign:'center',color:'rgba(255,255,255,.5)'}}>#{rank}</div>
+            <div style={{width:48,height:48,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#3b82f6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,border:'2px solid #4ade80'}}>{game.user?.cls?.char}</div>
+            <div style={{flex:1}}><div style={{fontWeight:700,display:'flex',alignItems:'center',gap:8}}>{game.user?.name}<span style={{color:'#4ade80',fontSize:12}}>(You)</span></div></div>
+            <div style={{fontWeight:700,color:'#4ade80'}}>Lv.{lvl}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TOWER/RAID
+  if(game.screen==="tower"||game.screen==="raid"){
+    const isR=game.screen==="raid",lvl=getLvl(game.user?.xp||0),req=isR?15:10,locked=lvl<req;
+    return(
+      <div style={{minHeight:'100vh',background:'linear-gradient(to bottom,#1e1b4b,#000)',color:'#fff'}}>
+        <header style={{padding:16}}><button onClick={()=>setGame(g=>({...g,screen:"home"}))} style={{width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,.1)',border:'none',color:'#fff',fontSize:18,cursor:'pointer'}}>←</button></header>
+        <div style={{padding:32,textAlign:'center'}}>
+          <div style={{fontSize:72,marginBottom:16,opacity:locked?.4:1}}>{isR?"⚔️":"🗼"}</div>
+          <h2 style={{fontSize:28,fontWeight:700,marginBottom:8}}>{isR?"Guild Raids":"Tower of Faith"}</h2>
+          {locked?<><p style={{color:'rgba(255,255,255,.5)',marginBottom:24}}>Unlocks at Level {req}</p><div className="card" style={{maxWidth:280,margin:'0 auto'}}><div style={{color:'rgba(255,255,255,.5)',fontSize:13,marginBottom:8}}>Progress</div><div style={{fontSize:24,fontWeight:700,color:'#fbbf24',marginBottom:12}}>Lv.{lvl} → {req}</div><div style={{height:8,background:'rgba(255,255,255,.1)',borderRadius:10,overflow:'hidden'}}><div style={{height:'100%',width:`${(lvl/req)*100}%`,background:'#f59e0b',borderRadius:10}}/></div></div></>:<><p style={{color:'rgba(255,255,255,.5)',marginBottom:24}}>{isR?"Fight bosses with your guild!":"Climb endless floors!"}</p><button className="btn" style={{width:'auto',padding:'14px 32px'}}>Coming Soon!</button></>}
+        </div>
+      </div>
+    );
+  }
+
+  return<div style={{minHeight:'100vh',background:'#000',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><button className="btn" onClick={()=>setGame(g=>({...g,screen:"home"}))}>Go Home</button></div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
